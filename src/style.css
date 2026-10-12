@@ -9,9 +9,9 @@
   --accent-soft: rgba(201, 169, 106, 0.12);
   --ok: #7cc49a;
   --warn: #e0b46a;
-  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --display: "Big Shoulders Stencil Display", Impact, sans-serif;
+  --body: "Quicksand", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
   --header-h: 56px;
   color-scheme: dark;
 }
@@ -40,15 +40,15 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
   transform: translate(-50%, -50%);
   background:
     conic-gradient(from 0deg,
-      rgba(201, 169, 106, 0.28) 0deg,
-      rgba(201, 169, 106, 0.04) 70deg,
+      rgba(201, 169, 106, 0.42) 0deg,
+      rgba(201, 169, 106, 0.06) 70deg,
       rgba(201, 169, 106, 0.22) 180deg,
-      rgba(201, 169, 106, 0.04) 250deg,
-      rgba(201, 169, 106, 0.28) 360deg),
+      rgba(201, 169, 106, 0.06) 250deg,
+      rgba(201, 169, 106, 0.42) 360deg),
     radial-gradient(ellipse at 50% 50%, rgba(201, 169, 106, 0.18) 0%, transparent 70%);
   border-radius: 50% 50% 42% 58% / 60% 40% 55% 45%;
   filter: blur(110px);
-  opacity: 0.55;
+  opacity: 0.78;
   will-change: transform;
 }
 
@@ -56,7 +56,7 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 .site-header-inner { max-width: 980px; height: 100%; margin: 0 auto; padding-inline: 20px; display: flex; flex-wrap: wrap; align-items: center; align-content: center; justify-content: space-between; gap: 6px 20px; }
 .brand { font: 700 18px/1.2 var(--display); letter-spacing: -0.01em; color: var(--ink); text-decoration: none; }
 .site-nav { display: flex; gap: 20px; }
-.site-nav a { font: 500 14px/1.4 var(--body); color: var(--muted); text-decoration: none; padding-block: 4px; border-bottom: 2px solid transparent; }
+.site-nav a { font: 500 14px/1.4 var(--display); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); text-decoration: none; padding-block: 4px; border-bottom: 2px solid transparent; }
 .site-nav a:hover { color: var(--ink); }
 .site-nav a.active { color: var(--ink); border-bottom-color: var(--accent); }
 
@@ -81,7 +81,9 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 #bubble-stage { position: relative; width: 100%; height: 80vh; min-height: 560px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: linear-gradient(180deg, rgba(201,169,106,0.03), transparent 60%); }
 #bubble-canvas { display: block; }
 /* Reduced motion: the same bubbles as static buttons */
-.bubble { position: absolute; transform: translate(-50%, -50%); border: 2px solid rgba(201, 169, 106, 0.75); border-radius: 50%; background: radial-gradient(circle 23px at 30% 30%, rgba(255, 255, 255, 0.25), transparent), rgba(201, 169, 106, 0.10); color: var(--ink); font: 500 15px var(--body); cursor: pointer; }
+.bubble { position: absolute; transform: translate(-50%, -50%); border: 2px solid rgba(201, 169, 106, 0.75); border-radius: 50%; background: radial-gradient(circle 23px at 30% 30%, rgba(255, 255, 255, 0.25), transparent), rgba(201, 169, 106, 0.10); color: var(--ink); font: 600 15px var(--body); cursor: pointer; }
+/* Stand-in for a clicked bubble while it swells and fades, just before the burst */
+.bubble-pop { position: absolute; display: grid; place-items: center; border: 2px solid rgba(201, 169, 106, 0.9); border-radius: 50%; background: rgba(201, 169, 106, 0.14); color: var(--ink); font: 600 15px var(--body); pointer-events: none; }
 .burst-particle { position: absolute; background: var(--accent); border-radius: 1px; pointer-events: none; }
 
 .detail-page { display: grid; gap: 28px; }

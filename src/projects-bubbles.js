@@ -12,6 +12,7 @@ const projects = [
 const DRIFT_FORCE = 0.00007; // per unit of mass, applied every step
 const MAX_SPEED = 1.2;
 const WALL = 100;
+const LIGHT = { x: -40, y: -40 }; // canvas-local, just off the top-left corner
 
 const stage = document.getElementById('bubble-stage');
 const canvas = document.getElementById('bubble-canvas');
@@ -56,16 +57,24 @@ function burst(x, y) {
   }
 }
 
-// A popped bubble bursts, then the page moves to that project once the burst has played.
+// A clicked bubble swells and fades, bursts, then the page moves to that project.
 let opening = false;
 
-function openProject(slug, x, y) {
+function openProject({ slug, name, radius }, x, y) {
   opening = true;
-  burst(x, y);
+  const pop = document.createElement('div');
+  pop.className = 'bubble-pop';
+  pop.textContent = name;
+  pop.style.cssText = `left:${x - radius}px;top:${y - radius}px;width:${radius * 2}px;height:${radius * 2}px`;
+  stage.append(pop);
+  gsap.to(pop, { scale: 1.45, opacity: 0, duration: 0.26, ease: 'power2.out' });
+  // Burst and navigation run on the same clock, so the burst can never land after the page has changed.
+  window.setTimeout(() => burst(x, y), 260);
   window.setTimeout(() => {
     opening = false;
     window.location.hash = `projets/${slug}`;
-  }, 600);
+    pop.remove();
+  }, 580);
 }
 
 // The stage has no size while its tab is hidden: (re)build the bubbles each time it comes back, resize in between.
@@ -126,7 +135,7 @@ function startPhysics() {
   function spawnBubbles(width, height) {
     Composite.remove(engine.world, bubbles);
     bubbles = cells(width, height).map((cell, index) => {
-      const { slug, name, radius } = projects[index];
+      const { radius } = projects[index];
       const spreadX = Math.max(0, cell.width / 2 - radius - 12);
       const spreadY = Math.max(0, cell.height / 2 - radius - 12);
       const body = Bodies.circle(cell.x + random(-spreadX, spreadX), cell.y + random(-spreadY, spreadY), radius, {
@@ -135,7 +144,7 @@ function startPhysics() {
         density: 0.0008, // light bodies
         render: { fillStyle: 'rgba(201, 169, 106, 0.10)', strokeStyle: 'rgba(201, 169, 106, 0.75)', lineWidth: 2 },
       });
-      body.plugin.data = { slug, name };
+      body.plugin.data = projects[index];
       body.plugin.drift = { angle: random(0, Math.PI * 2), until: 0 };
       const speed = random(0.3, 0.6);
       Body.setVelocity(body, { x: Math.cos(body.plugin.drift.angle) * speed, y: Math.sin(body.plugin.drift.angle) * speed });
@@ -177,7 +186,18 @@ function startPhysics() {
     });
   });
 
-  // Soap-film sheen and project name, drawn over Matter's own circles.
+  function glow(context, x, y, radius, alpha) {
+    const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+    gradient.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.arc(x, y, radius, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  // Highlights and project name, drawn over Matter's own circles. The highlight always faces LIGHT,
+  // with a faint reflection on the far side, so it turns around the bubble as the bubble moves.
   Events.on(render, 'afterRender', () => {
     const context = render.context;
     const ratio = render.options.pixelRatio;
@@ -188,17 +208,13 @@ function startPhysics() {
     bubbles.forEach((body) => {
       const { x, y } = body.position;
       const radius = body.circleRadius;
-      const sheenX = x - radius * 0.4;
-      const sheenY = y - radius * 0.4;
-      const sheen = context.createRadialGradient(sheenX, sheenY, 0, sheenX, sheenY, radius * 0.25);
-      sheen.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
-      sheen.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      context.fillStyle = sheen;
-      context.beginPath();
-      context.arc(sheenX, sheenY, radius * 0.25, 0, Math.PI * 2);
-      context.fill();
+      const distance = Math.hypot(LIGHT.x - x, LIGHT.y - y) || 1;
+      const towardX = (LIGHT.x - x) / distance;
+      const towardY = (LIGHT.y - y) / distance;
+      glow(context, x + towardX * radius * 0.55, y + towardY * radius * 0.55, radius * 0.28, 0.32);
+      glow(context, x - towardX * radius * 0.5, y - towardY * radius * 0.5, radius * 0.18, 0.08);
 
-      context.font = "500 15px 'IBM Plex Sans', system-ui";
+      context.font = "600 15px 'Quicksand', system-ui";
       context.fillStyle = '#F0E6CC';
       context.fillText(body.plugin.data.name, x, y);
     });
@@ -219,7 +235,7 @@ function startPhysics() {
     if (!body) return;
     Composite.remove(engine.world, body);
     bubbles = bubbles.filter((bubble) => bubble !== body);
-    openProject(body.plugin.data.slug, body.position.x, body.position.y);
+    openProject(body.plugin.data, body.position.x, body.position.y);
   });
 
   watchStage({
@@ -245,7 +261,8 @@ function startPhysics() {
 // Reduced motion: no physics loop, the bubbles are plain buttons at the centre of their cells.
 function startStatic() {
   canvas.hidden = true;
-  const buttons = projects.map(({ slug, name, radius }) => {
+  const buttons = projects.map((project) => {
+    const { name, radius } = project;
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'bubble';
@@ -255,7 +272,7 @@ function startStatic() {
     button.addEventListener('click', () => {
       if (opening) return;
       button.hidden = true;
-      openProject(slug, button.offsetLeft, button.offsetTop);
+      openProject(project, button.offsetLeft, button.offsetTop);
     });
     stage.append(button);
     return button;
