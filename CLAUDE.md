@@ -1,0 +1,1 @@
+Pour les commits dans ce dépôt, n'ajoute jamais de lignes Co-Authored-By ni Claude-Session dans les messages de commit.
