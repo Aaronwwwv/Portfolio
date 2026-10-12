@@ -7,172 +7,256 @@
 <meta name="description" content="Portfolio d'Aaron Dinguirard, étudiant en ingénierie financière : projets RUGTRAAK et SQ Keys.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<style>
-/* Layout: one reading column, each project as a dossier with a figures ledger on the right (stacked on phones) */
-:root {
-  --paper: #f6f7f9;
-  --sheet: #ffffff;
-  --ink: #141a24;
-  --muted: #5a6474;
-  --line: #d9dee6;
-  --accent: #1f5f8b;
-  --accent-soft: #e4eef6;
-  --ok: #2c6e49;
-  --warn: #8a5a12;
-  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --paper: #10141b; --sheet: #171c25; --ink: #e8ecf2; --muted: #9aa5b5; --line: #2a3240;
-  --accent: #79b4de; --accent-soft: #1b2a3a; --ok: #7cc49a; --warn: #e0b46a; color-scheme: dark } }
-:root[data-theme="dark"] {
-  --paper: #10141b; --sheet: #171c25; --ink: #e8ecf2; --muted: #9aa5b5; --line: #2a3240;
-  --accent: #79b4de; --accent-soft: #1b2a3a; --ok: #7cc49a; --warn: #e0b46a; color-scheme: dark }
-
-* { box-sizing: border-box; }
-body { margin: 0; }
-img { max-width: 100%; }
-body { background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--body); }
-.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: 48px 72px; display: grid; gap: 56px; }
-a { color: var(--accent); text-underline-offset: 3px; }
-a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
-h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
-.label { font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
-
-header { display: grid; gap: 18px; }
-header h1 { font-size: clamp(38px, 7vw, 64px); line-height: 1; font-weight: 700; }
-.lede { font-size: 19px; max-width: 62ch; margin: 0; }
-.contact { display: flex; flex-wrap: wrap; gap: 8px 22px; font: 400 14px/1.5 var(--mono); color: var(--muted); }
-.contact span { user-select: all; }
-.goal { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; max-width: 70ch; color: var(--muted); margin: 0; }
-
-.section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
-.section-head h2 { font-size: 26px; }
-
-.project { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 28px; padding-block: 28px; border-bottom: 1px solid var(--line); }
-.project:last-child { border-bottom: 0; }
-.project .text { min-width: 0; display: grid; gap: 12px; align-content: start; }
-.project h3 { font-size: 24px; }
-.meta { font: 400 13px/1.5 var(--mono); color: var(--muted); }
-.project p { margin: 0; max-width: 65ch; }
-.project ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 65ch; }
-.ledger { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; align-self: start; display: grid; gap: 12px; min-width: 0; }
-.ledger dl { margin: 0; display: grid; gap: 10px; }
-.ledger div { display: grid; gap: 2px; }
-.ledger dt { font-size: 13px; color: var(--muted); }
-.ledger dd { margin: 0; font: 500 20px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
-.ledger dd small { font: 400 12px var(--body); color: var(--muted); margin-left: 4px; }
-
-.status { display: grid; gap: 8px; margin-top: 4px; }
-.status-row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; font-size: 15px; }
-.chip { font: 500 11px/1.9 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; border-radius: 3px; text-align: center; height: fit-content; }
-.chip.done { color: var(--ok); border: 1px solid currentColor; }
-.chip.research { color: var(--warn); border: 1px solid currentColor; }
-.chip.sim { color: var(--muted); border: 1px solid currentColor; }
-.note { font-size: 14px; color: var(--muted); }
-
-.small-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 28px; }
-.small { padding-block: 22px; display: grid; gap: 8px; align-content: start; min-width: 0; }
-.small h3 { font-size: 19px; }
-.small p { margin: 0; font-size: 15px; }
-
-.method { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 32px; }
-.method p { margin: 0; max-width: 60ch; }
-footer { color: var(--muted); font-size: 13px; }
-
-@media (max-width: 760px) {
-  .project { grid-template-columns: minmax(0, 1fr); }
-  .small-grid, .method { grid-template-columns: minmax(0, 1fr); }
-  .wrap { gap: 40px; padding-block: 32px 56px; }
-}
-</style>
+<script type="module" src="/src/main.js"></script>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <span class="label">Ingénierie financière, ESILV et EMLV, 4e année</span>
-    <h1>Aaron Dinguirard</h1>
-    <p class="lede">Étudiant en ingénierie financière. Je construis des outils de collecte de données et de backtest, en pilotant des agents de code et en vérifiant chaque résultat moi-même.</p>
-    <p class="goal">Recherche d'un stage de fin d'études de 16 à 20 semaines à partir du 12 avril 2027, en finance de marché, gestion d'actifs ou finance quantitative.</p>
-    <div class="contact">
-      <span>dinguirardaaron@gmail.com</span>
-      <a href="https://www.linkedin.com/in/aaron-dinguirard-2a9785258" target="_blank" rel="noopener">LinkedIn</a>
-      <span>Issy-les-Moulineaux (92)</span>
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="brand" href="#accueil">Aaron Dinguirard</a>
+    <nav class="site-nav" aria-label="Navigation principale">
+      <a href="#accueil">Accueil</a>
+      <a href="#parcours">Parcours</a>
+      <a href="#projets">Projets</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="accueil" class="stack">
+    <div class="hero">
+      <span class="label">Ingénierie financière, ESILV et EMLV, 4e année</span>
+      <h1>Aaron Dinguirard</h1>
+      <p class="lede">Étudiant en ingénierie financière. Je construis des outils de collecte de données et de backtest, en pilotant des agents de code et en vérifiant chaque résultat moi-même.</p>
+      <p class="goal">Recherche d'un stage de fin d'études de 16 à 20 semaines à partir du 12 avril 2027, en finance de marché, gestion d'actifs ou finance quantitative.</p>
+      <div class="contact">
+        <span>dinguirardaaron@gmail.com</span>
+        <a href="https://www.linkedin.com/in/aaron-dinguirard-2a9785258" target="_blank" rel="noopener">LinkedIn</a>
+        <span>Issy-les-Moulineaux (92)</span>
+      </div>
     </div>
-  </header>
+  </section>
 
-  <section>
-    <div class="section-head"><h2>Projets principaux</h2><span class="label">chiffres vérifiés à date</span></div>
-
-    <article class="project" id="rugtraak">
-      <div class="text">
-        <h3>RUGTRAAK</h3>
-        <div class="meta">2026 à aujourd'hui · Node.js, PostgreSQL (Supabase), React, Telegram</div>
-        <p>Bot qui suit des wallets de créateurs de memecoins sur Solana, enregistre chaque token lancé et teste des stratégies de prise de profit sur l'historique. Le bot tourne 24 h/24 sur un serveur cloud gratuit et se pilote depuis Telegram ; un tableau de bord séparé sert au backtest.</p>
+  <section id="parcours" class="stack">
+    <div>
+      <div class="section-head"><h2>Formation</h2></div>
+      <article class="entry">
+        <h3>Double Diplôme Ingénieur &amp; Manager, ESILV &amp; EMLV</h3>
+        <div class="meta">Sept. 2023 à aujourd'hui · Paris La Défense</div>
         <ul>
-          <li>Le plus haut historique de chaque token est recalculé à partir des transactions sur la blockchain, après la suppression de la source externe utilisée au départ.</li>
-          <li>L'optimiseur teste chaque combinaison de take-profit et de stop-loss, puis la classe selon 9 métriques de risque. Un Monte Carlo par permutation et par bootstrap mesure si le résultat tient au hasard de l'ordre des trades.</li>
-          <li>Entre le 23 septembre et le 5 octobre 2026, 10 incidents de production ont été diagnostiqués et corrigés, dont une panne de 24 h causée par un quota d'API épuisé.</li>
+          <li>4e année, spécialisation Ingénierie Financière (cours en anglais à partir de 2026)</li>
+          <li>Cours : modélisation financière, gestion des risques, statistiques, analyse fonctionnelle</li>
         </ul>
-        <p class="note">Limite assumée : sur 78 tokens, 8 trades gagnants portent tout le résultat. Aucune stratégie ne sera figée avant 500 observations.</p>
-      </div>
-      <aside class="ledger" aria-label="Chiffres RUGTRAAK">
-        <span class="label">Chiffres</span>
-        <dl>
-          <div><dt>Wallets suivis</dt><dd>22 <small>en 6 groupes</small></dd></div>
-          <div><dt>Configurations TP/SL par exécution</dt><dd>231 458</dd></div>
-          <div><dt>Écart max. de l'ATH recalculé</dt><dd>0,13 % <small>sur 10 tokens</small></dd></div>
-          <div><dt>Tests automatisés</dt><dd>≈ 650</dd></div>
-          <div><dt>Coût d'infrastructure</dt><dd>0 $</dd></div>
-        </dl>
-      </aside>
-    </article>
+      </article>
+      <article class="entry">
+        <h3>Semestre d'échange, Kasetsart University</h3>
+        <div class="meta">Août à déc. 2025 · Bangkok, Thaïlande</div>
+        <ul>
+          <li>Cours en anglais : probabilités et statistiques, algorithmique, machine learning</li>
+        </ul>
+      </article>
+      <article class="entry">
+        <h3>Baccalauréat Scientifique, Institut Notre-Dame</h3>
+        <div class="meta">Juin 2023 · Meudon</div>
+        <ul>
+          <li>Mention Très Bien : 20/20 en Mathématiques, 19/20 en Philosophie, 18,5/20 en Physique-Chimie</li>
+        </ul>
+      </article>
+    </div>
 
-    <article class="project" id="sqkeys">
-      <div class="text">
-        <h3>SQ Keys</h3>
-        <div class="meta">Hackathon BSA x EPFL avec DeVinci Blockchain (DVB), Lausanne · 10 et 11 octobre 2026 · équipe de 3</div>
-        <p>Prototype de wallet en auto-garde qu'une banque comme Swissquote pourrait proposer. Les fonds sont sur un compte Safe qui demande 2 signatures sur 3 : le téléphone du client, un avocat indépendant et la banque, qui n'intervient que pour la récupération. J'étais responsable technique et juridique : découpage du travail entre trois agents de code, relecture des commits, conditions d'utilisation et analyse réglementaire suisse (FINMA, LBA, nLPD).</p>
-        <div class="status" aria-label="Ce qui a été livré">
-          <div class="status-row"><span class="chip done">livré</span><span>Safe 2-sur-3 sur testnet (Base Sepolia), règles de dépense côté avocat, récupération du compte sans changer d'adresse, frais pris en charge par un relais.</span></div>
-          <div class="status-row"><span class="chip research">recherche</span><span>Signature à seuil (MPC) : une transaction USDC sur testnet signée par 2 parties sur 3, non intégrée à l'application.</span></div>
-          <div class="status-row"><span class="chip sim">simulé</span><span>Connexion Swissquote, vérification d'identité et compte bancaire, signalés comme tels dans l'interface.</span></div>
-        </div>
-        <p class="note">Pas de prix. Leçon retenue : fixer dès le début une heure de décision entre la technologie risquée et le plan B, et annoncer par écrit tout changement d'architecture.</p>
-      </div>
-      <aside class="ledger" aria-label="Chiffres SQ Keys">
-        <span class="label">Chiffres</span>
-        <dl>
-          <div><dt>Durée</dt><dd>24 h</dd></div>
-          <div><dt>Seuil de signature</dt><dd>2 sur 3</dd></div>
-          <div><dt>Plafonds par défaut</dt><dd>5 USDC <small>par transaction</small></dd></div>
-          <div><dt>Sessions d'agents en parallèle</dt><dd>3</dd></div>
-        </dl>
-      </aside>
-    </article>
-  </section>
-
-  <section>
-    <div class="section-head"><h2>Autres réalisations</h2></div>
-    <div class="small-grid">
-      <div class="small">
-        <h3>Site de cours particuliers</h3>
-        <div class="meta">Next.js, Supabase, Brevo · août 2026</div>
-        <p>Réservation de cours et de stages intensifs, avec comptes élèves et e-mails automatiques. En production : <a href="https://aaron-tutorat.vercel.app" target="_blank" rel="noopener">aaron-tutorat.vercel.app</a></p>
-      </div>
-      <div class="small">
-        <h3>Bibliothèque de cours</h3>
-        <div class="meta">LaTeX · depuis 2023</div>
-        <p>73 chapitres sur 6 niveaux, du collège au post-bac, avec exercices corrigés. Environ 10 élèves suivis ; progressions de 7 à 15 et de 11 à 17 sur 20.</p>
-      </div>
-      <div class="small">
-        <h3>Outils back office, Auxiga</h3>
-        <div class="meta">Excel, VBA · 2024 à 2025</div>
-        <p>Un outil VBA calcule les taux de performance des équipes en quelques secondes au lieu de 30 minutes. Le reporting est passé de 15 à 5 minutes par collaborateur.</p>
-      </div>
+    <div>
+      <div class="section-head"><h2>Expérience professionnelle</h2></div>
+      <article class="entry">
+        <h3>Spécialiste évaluation IA (freelance)</h3>
+        <div class="meta">Août 2026 à aujourd'hui · Mercor Intelligence, San Francisco (distanciel)</div>
+        <ul>
+          <li>Évaluation et notation de contenus générés par des modèles d'IA pour un laboratoire de premier plan, sur la base de grilles de qualité détaillées</li>
+          <li>Identification des erreurs récurrentes (imprécisions factuelles, formulations vagues ou illogiques) et rédaction d'un retour argumenté sur chaque cas</li>
+          <li>Recrutement à l'issue d'un processus de sélection international, avec entretien en anglais</li>
+        </ul>
+      </article>
+      <article class="entry">
+        <h3>Gestionnaire Back Office</h3>
+        <div class="meta">Juin 2024 à déc. 2025 · Auxiga, Boulogne-Billancourt</div>
+        <ul>
+          <li>Développement d'un outil VBA calculant instantanément les taux de performance des équipes, en remplacement d'un traitement manuel de 30 minutes</li>
+          <li>Conception d'outils de reporting ayant réduit le temps de reporting de 15 à 5 minutes par collaborateur</li>
+          <li>Gestion d'une base de données mise à jour en temps réel, en lien avec les équipes commerciales et bancaires</li>
+        </ul>
+      </article>
+      <article class="entry">
+        <h3>Tuteur en Mathématiques et Physique-Chimie</h3>
+        <div class="meta">Sept. 2023 à aujourd'hui · Indépendant, région parisienne</div>
+        <ul>
+          <li>Plus de 3 ans de cours particuliers, environ 10 élèves du collège au post-bac (Brevet, Bac, concours)</li>
+          <li>Conception et déploiement d'un site Next.js permettant aux élèves de réserver des cours et des stages intensifs</li>
+        </ul>
+      </article>
     </div>
   </section>
-</div>
+
+  <section id="projets">
+    <div id="projets-liste" class="stack">
+      <div>
+        <div class="section-head"><h2>Projets principaux</h2><span class="label">chiffres vérifiés à date</span></div>
+
+        <article class="project">
+          <div class="text">
+            <h3>RUGTRAAK</h3>
+            <div class="meta">2026 à aujourd'hui · Node.js, PostgreSQL (Supabase), React, Telegram</div>
+            <p>Bot qui suit des wallets de créateurs de memecoins sur Solana, enregistre chaque token lancé et teste des stratégies de prise de profit sur l'historique. Le bot tourne 24 h/24 sur un serveur cloud gratuit et se pilote depuis Telegram ; un tableau de bord séparé sert au backtest.</p>
+            <ul>
+              <li>Le plus haut historique de chaque token est recalculé à partir des transactions sur la blockchain, après la suppression de la source externe utilisée au départ.</li>
+              <li>L'optimiseur teste chaque combinaison de take-profit et de stop-loss, puis la classe selon 9 métriques de risque. Un Monte Carlo par permutation et par bootstrap mesure si le résultat tient au hasard de l'ordre des trades.</li>
+              <li>Entre le 23 septembre et le 5 octobre 2026, 10 incidents de production ont été diagnostiqués et corrigés, dont une panne de 24 h causée par un quota d'API épuisé.</li>
+            </ul>
+            <p class="note">Limite assumée : sur 78 tokens, 8 trades gagnants portent tout le résultat. Aucune stratégie ne sera figée avant 500 observations.</p>
+            <p><a href="#projets/rugtraak">Voir le détail</a></p>
+          </div>
+          <aside class="ledger" aria-label="Chiffres RUGTRAAK">
+            <span class="label">Chiffres</span>
+            <dl>
+              <div><dt>Wallets suivis</dt><dd>22 <small>en 6 groupes</small></dd></div>
+              <div><dt>Configurations TP/SL par exécution</dt><dd>231 458</dd></div>
+              <div><dt>Écart max. de l'ATH recalculé</dt><dd>0,13 % <small>sur 10 tokens</small></dd></div>
+              <div><dt>Tests automatisés</dt><dd>≈ 650</dd></div>
+              <div><dt>Coût d'infrastructure</dt><dd>0 $</dd></div>
+            </dl>
+          </aside>
+        </article>
+
+        <article class="project">
+          <div class="text">
+            <h3>SQ Keys</h3>
+            <div class="meta">Hackathon BSA x EPFL avec DeVinci Blockchain (DVB), Lausanne · 10 et 11 octobre 2026 · équipe de 3</div>
+            <p>Prototype de wallet en auto-garde qu'une banque comme Swissquote pourrait proposer. Les fonds sont sur un compte Safe qui demande 2 signatures sur 3 : le téléphone du client, un avocat indépendant et la banque, qui n'intervient que pour la récupération. J'étais responsable technique et juridique : découpage du travail entre trois agents de code, relecture des commits, conditions d'utilisation et analyse réglementaire suisse (FINMA, LBA, nLPD).</p>
+            <div class="status" aria-label="Ce qui a été livré">
+              <div class="status-row"><span class="chip done">livré</span><span>Safe 2-sur-3 sur testnet (Base Sepolia), règles de dépense côté avocat, récupération du compte sans changer d'adresse, frais pris en charge par un relais.</span></div>
+              <div class="status-row"><span class="chip research">recherche</span><span>Signature à seuil (MPC) : une transaction USDC sur testnet signée par 2 parties sur 3, non intégrée à l'application.</span></div>
+              <div class="status-row"><span class="chip sim">simulé</span><span>Connexion Swissquote, vérification d'identité et compte bancaire, signalés comme tels dans l'interface.</span></div>
+            </div>
+            <p class="note">Pas de prix. Leçon retenue : fixer dès le début une heure de décision entre la technologie risquée et le plan B, et annoncer par écrit tout changement d'architecture.</p>
+            <p><a href="#projets/sqkeys">Voir le détail</a></p>
+          </div>
+          <aside class="ledger" aria-label="Chiffres SQ Keys">
+            <span class="label">Chiffres</span>
+            <dl>
+              <div><dt>Durée</dt><dd>24 h</dd></div>
+              <div><dt>Seuil de signature</dt><dd>2 sur 3</dd></div>
+              <div><dt>Plafonds par défaut</dt><dd>5 USDC <small>par transaction</small></dd></div>
+              <div><dt>Sessions d'agents en parallèle</dt><dd>3</dd></div>
+            </dl>
+          </aside>
+        </article>
+      </div>
+
+      <div>
+        <div class="section-head"><h2>Autres réalisations</h2></div>
+        <div class="small-grid">
+          <div class="small">
+            <h3>Site de cours particuliers</h3>
+            <div class="meta">Next.js, Supabase, Brevo · août 2026</div>
+            <p>Réservation de cours et de stages intensifs, avec comptes élèves et e-mails automatiques. En production : <a href="https://aaron-tutorat.vercel.app" target="_blank" rel="noopener">aaron-tutorat.vercel.app</a></p>
+          </div>
+          <div class="small">
+            <h3>Bibliothèque de cours</h3>
+            <div class="meta">LaTeX · depuis 2023</div>
+            <p>73 chapitres sur 6 niveaux, du collège au post-bac, avec exercices corrigés. Environ 10 élèves suivis ; progressions de 7 à 15 et de 11 à 17 sur 20.</p>
+          </div>
+          <div class="small">
+            <h3>Outils back office, Auxiga</h3>
+            <div class="meta">Excel, VBA · 2024 à 2025</div>
+            <p>Un outil VBA calcule les taux de performance des équipes en quelques secondes au lieu de 30 minutes. Le reporting est passé de 15 à 5 minutes par collaborateur.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section id="projet-rugtraak" class="detail-page" hidden>
+      <button type="button" class="back">Retour aux projets</button>
+      <article class="project detail">
+        <div class="text">
+          <h2>RUGTRAAK</h2>
+          <div class="meta">2026 à aujourd'hui · Node.js, PostgreSQL (Supabase), React, Telegram</div>
+
+          <h3>Ce que fait le bot</h3>
+          <p>RUGTRAAK suit des wallets de créateurs de memecoins sur Solana : 22 wallets, répartis en 6 groupes. Il enregistre chaque token lancé, puis teste des stratégies de prise de profit sur l'historique.</p>
+          <p>Le bot tourne 24 h/24 sur un serveur cloud gratuit et se pilote depuis Telegram. Un tableau de bord séparé sert au backtest. Le coût d'infrastructure est de 0 $.</p>
+
+          <h3>Données</h3>
+          <p>La source externe utilisée au départ pour le plus haut historique a été supprimée. Le plus haut historique de chaque token est donc recalculé à partir des transactions sur la blockchain. Sur 10 tokens, l'écart maximal de l'ATH recalculé est de 0,13 %.</p>
+
+          <h3>Backtest</h3>
+          <p>L'optimiseur teste chaque combinaison de take-profit et de stop-loss, soit 231 458 configurations par exécution, puis la classe selon 9 métriques de risque.</p>
+          <p>Un Monte Carlo par permutation et par bootstrap mesure si le résultat tient au hasard de l'ordre des trades.</p>
+
+          <h3>Production</h3>
+          <p>Entre le 23 septembre et le 5 octobre 2026, 10 incidents de production ont été diagnostiqués et corrigés, dont une panne de 24 h causée par un quota d'API épuisé. Le projet compte environ 650 tests automatisés.</p>
+
+          <h3>Limite assumée</h3>
+          <p>Sur 78 tokens, 8 trades gagnants portent tout le résultat. Aucune stratégie ne sera figée avant 500 observations.</p>
+        </div>
+        <aside class="ledger" aria-label="Chiffres RUGTRAAK">
+          <span class="label">Chiffres</span>
+          <dl>
+            <div><dt>Wallets suivis</dt><dd>22 <small>en 6 groupes</small></dd></div>
+            <div><dt>Configurations TP/SL par exécution</dt><dd>231 458</dd></div>
+            <div><dt>Écart max. de l'ATH recalculé</dt><dd>0,13 % <small>sur 10 tokens</small></dd></div>
+            <div><dt>Tests automatisés</dt><dd>≈ 650</dd></div>
+            <div><dt>Coût d'infrastructure</dt><dd>0 $</dd></div>
+          </dl>
+        </aside>
+      </article>
+    </section>
+
+    <section id="projet-sqkeys" class="detail-page" hidden>
+      <button type="button" class="back">Retour aux projets</button>
+      <article class="project detail">
+        <div class="text">
+          <h2>SQ Keys</h2>
+          <div class="meta">Hackathon BSA x EPFL avec DeVinci Blockchain (DVB), Lausanne · 10 et 11 octobre 2026 · équipe de 3</div>
+
+          <h3>Contexte</h3>
+          <p>SQ Keys a été construit en 24 h, les 10 et 11 octobre 2026, au hackathon BSA x EPFL à Lausanne, avec DeVinci Blockchain (DVB) et en équipe de 3.</p>
+
+          <h3>Le prototype</h3>
+          <p>C'est un prototype de wallet en auto-garde qu'une banque comme Swissquote pourrait proposer. Les fonds sont sur un compte Safe qui demande 2 signatures sur 3 : le téléphone du client, un avocat indépendant et la banque, qui n'intervient que pour la récupération. Le plafond par défaut est de 5 USDC par transaction.</p>
+
+          <h3>Mon rôle</h3>
+          <p>J'étais responsable technique et juridique. Côté technique : découpage du travail entre trois agents de code, qui tournaient en 3 sessions en parallèle, et relecture des commits. Côté juridique : conditions d'utilisation et analyse réglementaire suisse (FINMA, LBA, nLPD).</p>
+
+          <h3>État du prototype</h3>
+          <div class="status" aria-label="Ce qui a été livré">
+            <div class="status-row"><span class="chip done">livré</span><span>Safe 2-sur-3 sur testnet (Base Sepolia), règles de dépense côté avocat, récupération du compte sans changer d'adresse, frais pris en charge par un relais.</span></div>
+            <div class="status-row"><span class="chip research">recherche</span><span>Signature à seuil (MPC) : une transaction USDC sur testnet signée par 2 parties sur 3, non intégrée à l'application.</span></div>
+            <div class="status-row"><span class="chip sim">simulé</span><span>Connexion Swissquote, vérification d'identité et compte bancaire, signalés comme tels dans l'interface.</span></div>
+          </div>
+
+          <h3>Bilan</h3>
+          <p>Pas de prix. Leçon retenue : fixer dès le début une heure de décision entre la technologie risquée et le plan B, et annoncer par écrit tout changement d'architecture.</p>
+        </div>
+        <aside class="ledger" aria-label="Chiffres SQ Keys">
+          <span class="label">Chiffres</span>
+          <dl>
+            <div><dt>Durée</dt><dd>24 h</dd></div>
+            <div><dt>Seuil de signature</dt><dd>2 sur 3</dd></div>
+            <div><dt>Plafonds par défaut</dt><dd>5 USDC <small>par transaction</small></dd></div>
+            <div><dt>Sessions d'agents en parallèle</dt><dd>3</dd></div>
+          </dl>
+        </aside>
+      </article>
+    </section>
+  </section>
+
+  <section id="contact">
+    <div class="section-head"><h2>Contact</h2></div>
+    <dl class="contact-list">
+      <div><dt class="label">E-mail</dt><dd><span>dinguirardaaron@gmail.com</span></dd></div>
+      <div><dt class="label">LinkedIn</dt><dd><a href="https://www.linkedin.com/in/aaron-dinguirard-2a9785258" target="_blank" rel="noopener">linkedin.com/in/aaron-dinguirard-2a9785258</a></dd></div>
+      <div><dt class="label">GitHub</dt><dd><a href="https://github.com/Aaronwwwv/Portfolio" target="_blank" rel="noopener">github.com/Aaronwwwv/Portfolio</a></dd></div>
+      <div><dt class="label">Ville</dt><dd>Issy-les-Moulineaux (92)</dd></div>
+    </dl>
+  </section>
+</main>
 </body>
 </html>
