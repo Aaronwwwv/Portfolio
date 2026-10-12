@@ -1,4 +1,8 @@
 import './style.css';
+import gsap from 'gsap';
+import { lenis } from './scroll.js';
+import './bg.js';
+import './projects-bubbles.js';
 
 // Hash routing: "#parcours" shows one tab, "#projets/rugtraak" shows a project detail page.
 const DEFAULT_VIEW = 'accueil';
@@ -31,7 +35,8 @@ function render() {
     else link.removeAttribute('aria-current');
   });
 
-  window.scrollTo(0, 0);
+  lenis.scrollTo(0, { immediate: true, force: true });
+  if (detail) gsap.from(detail, { y: 24, opacity: 0, duration: 0.6, ease: 'power2.out' });
 }
 
 document.querySelectorAll('.back').forEach((button) => {

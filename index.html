@@ -10,6 +10,7 @@
 <script type="module" src="/src/main.js"></script>
 </head>
 <body>
+<div id="bg-shape" aria-hidden="true"><div class="funnel"></div></div>
 <header class="site-header">
   <div class="site-header-inner">
     <a class="brand" href="#accueil">Aaron Dinguirard</a>
@@ -99,55 +100,8 @@
     <div id="projets-liste" class="stack">
       <div>
         <div class="section-head"><h2>Projets principaux</h2><span class="label">chiffres vérifiés à date</span></div>
-
-        <article class="project">
-          <div class="text">
-            <h3>RUGTRAAK</h3>
-            <div class="meta">2026 à aujourd'hui · Node.js, PostgreSQL (Supabase), React, Telegram</div>
-            <p>Bot qui suit des wallets de créateurs de memecoins sur Solana, enregistre chaque token lancé et teste des stratégies de prise de profit sur l'historique. Le bot tourne 24 h/24 sur un serveur cloud gratuit et se pilote depuis Telegram ; un tableau de bord séparé sert au backtest.</p>
-            <ul>
-              <li>Le plus haut historique de chaque token est recalculé à partir des transactions sur la blockchain, après la suppression de la source externe utilisée au départ.</li>
-              <li>L'optimiseur teste chaque combinaison de take-profit et de stop-loss, puis la classe selon 9 métriques de risque. Un Monte Carlo par permutation et par bootstrap mesure si le résultat tient au hasard de l'ordre des trades.</li>
-              <li>Entre le 23 septembre et le 5 octobre 2026, 10 incidents de production ont été diagnostiqués et corrigés, dont une panne de 24 h causée par un quota d'API épuisé.</li>
-            </ul>
-            <p class="note">Limite assumée : sur 78 tokens, 8 trades gagnants portent tout le résultat. Aucune stratégie ne sera figée avant 500 observations.</p>
-            <p><a href="#projets/rugtraak">Voir le détail</a></p>
-          </div>
-          <aside class="ledger" aria-label="Chiffres RUGTRAAK">
-            <span class="label">Chiffres</span>
-            <dl>
-              <div><dt>Wallets suivis</dt><dd>22 <small>en 6 groupes</small></dd></div>
-              <div><dt>Configurations TP/SL par exécution</dt><dd>231 458</dd></div>
-              <div><dt>Écart max. de l'ATH recalculé</dt><dd>0,13 % <small>sur 10 tokens</small></dd></div>
-              <div><dt>Tests automatisés</dt><dd>≈ 650</dd></div>
-              <div><dt>Coût d'infrastructure</dt><dd>0 $</dd></div>
-            </dl>
-          </aside>
-        </article>
-
-        <article class="project">
-          <div class="text">
-            <h3>SQ Keys</h3>
-            <div class="meta">Hackathon BSA x EPFL avec DeVinci Blockchain (DVB), Lausanne · 10 et 11 octobre 2026 · équipe de 3</div>
-            <p>Prototype de wallet en auto-garde qu'une banque comme Swissquote pourrait proposer. Les fonds sont sur un compte Safe qui demande 2 signatures sur 3 : le téléphone du client, un avocat indépendant et la banque, qui n'intervient que pour la récupération. J'étais responsable technique et juridique : découpage du travail entre trois agents de code, relecture des commits, conditions d'utilisation et analyse réglementaire suisse (FINMA, LBA, nLPD).</p>
-            <div class="status" aria-label="Ce qui a été livré">
-              <div class="status-row"><span class="chip done">livré</span><span>Safe 2-sur-3 sur testnet (Base Sepolia), règles de dépense côté avocat, récupération du compte sans changer d'adresse, frais pris en charge par un relais.</span></div>
-              <div class="status-row"><span class="chip research">recherche</span><span>Signature à seuil (MPC) : une transaction USDC sur testnet signée par 2 parties sur 3, non intégrée à l'application.</span></div>
-              <div class="status-row"><span class="chip sim">simulé</span><span>Connexion Swissquote, vérification d'identité et compte bancaire, signalés comme tels dans l'interface.</span></div>
-            </div>
-            <p class="note">Pas de prix. Leçon retenue : fixer dès le début une heure de décision entre la technologie risquée et le plan B, et annoncer par écrit tout changement d'architecture.</p>
-            <p><a href="#projets/sqkeys">Voir le détail</a></p>
-          </div>
-          <aside class="ledger" aria-label="Chiffres SQ Keys">
-            <span class="label">Chiffres</span>
-            <dl>
-              <div><dt>Durée</dt><dd>24 h</dd></div>
-              <div><dt>Seuil de signature</dt><dd>2 sur 3</dd></div>
-              <div><dt>Plafonds par défaut</dt><dd>5 USDC <small>par transaction</small></dd></div>
-              <div><dt>Sessions d'agents en parallèle</dt><dd>3</dd></div>
-            </dl>
-          </aside>
-        </article>
+        <p class="note bubble-intro">Cliquez sur une bulle pour ouvrir le détail du projet.</p>
+        <div id="bubble-stage" aria-label="Projets flottants"><canvas id="bubble-canvas"></canvas></div>
       </div>
 
       <div>
@@ -174,7 +128,7 @@
 
     <section id="projet-rugtraak" class="detail-page" hidden>
       <button type="button" class="back">Retour aux projets</button>
-      <article class="project detail">
+      <article class="detail">
         <div class="text">
           <h2>RUGTRAAK</h2>
           <div class="meta">2026 à aujourd'hui · Node.js, PostgreSQL (Supabase), React, Telegram</div>
@@ -211,7 +165,7 @@
 
     <section id="projet-sqkeys" class="detail-page" hidden>
       <button type="button" class="back">Retour aux projets</button>
-      <article class="project detail">
+      <article class="detail">
         <div class="text">
           <h2>SQ Keys</h2>
           <div class="meta">Hackathon BSA x EPFL avec DeVinci Blockchain (DVB), Lausanne · 10 et 11 octobre 2026 · équipe de 3</div>
