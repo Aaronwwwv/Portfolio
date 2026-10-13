@@ -10,7 +10,9 @@ const projects = [
 ];
 
 const DRIFT_FORCE = 0.00007; // per unit of mass, applied every step
-const MAX_SPEED = 1.2;
+const CRUISE_SPEED = 0.8; // ambient drift; anything faster is a throw that decays back to it
+const THROW_DECAY = 0.987; // velocity kept per step above cruise speed
+const SAFETY_SPEED = 45; // hard cap per step, only so a body can never tunnel through a wall
 const WALL = 100;
 const LIGHT = { x: -40, y: -40 }; // canvas-local, just off the top-left corner
 
@@ -113,7 +115,8 @@ function startPhysics() {
 
   const mouseConstraint = MouseConstraint.create(engine, {
     mouse,
-    constraint: { stiffness: 0.2, render: { visible: false } },
+    // Soft enough for the bubble to trail the cursor; on release Matter leaves its velocity alone, so the throw carries over.
+    constraint: { stiffness: 0.07, damping: 0.12, render: { visible: false } },
   });
   Composite.add(engine.world, mouseConstraint);
 
@@ -139,7 +142,7 @@ function startPhysics() {
       const spreadX = Math.max(0, cell.width / 2 - radius - 12);
       const spreadY = Math.max(0, cell.height / 2 - radius - 12);
       const body = Bodies.circle(cell.x + random(-spreadX, spreadX), cell.y + random(-spreadY, spreadY), radius, {
-        frictionAir: 0.045, // viscous drag
+        frictionAir: 0.012, // viscous drag
         restitution: 0.65, // soft bounce
         density: 0.0008, // light bodies
         render: { fillStyle: 'rgba(201, 169, 106, 0.10)', strokeStyle: 'rgba(201, 169, 106, 0.75)', lineWidth: 2 },
@@ -163,7 +166,8 @@ function startPhysics() {
     });
   }
 
-  // Each bubble is pushed very gently in a direction that changes every 3.5 to 5 seconds, and never moves fast.
+  // Each bubble is pushed very gently in a direction that changes every 3.5 to 5 seconds.
+  // A thrown bubble glides and loses its excess speed over a few seconds, as in a viscous fluid.
   Events.on(engine, 'beforeUpdate', ({ timestamp }) => {
     bubbles.forEach((body) => {
       const { drift } = body.plugin;
@@ -171,9 +175,15 @@ function startPhysics() {
         drift.angle = random(0, Math.PI * 2);
         drift.until = timestamp + random(3500, 5000);
       }
-      const force = DRIFT_FORCE * body.mass;
-      Body.applyForce(body, body.position, { x: Math.cos(drift.angle) * force, y: Math.sin(drift.angle) * force });
-      if (body !== mouseConstraint.body && body.speed > MAX_SPEED) Body.setSpeed(body, MAX_SPEED);
+      const speed = Math.hypot(body.velocity.x, body.velocity.y);
+      if (speed <= CRUISE_SPEED * 2) {
+        const force = DRIFT_FORCE * body.mass;
+        Body.applyForce(body, body.position, { x: Math.cos(drift.angle) * force, y: Math.sin(drift.angle) * force });
+      }
+      if (speed > CRUISE_SPEED) {
+        const keep = Math.min(THROW_DECAY, SAFETY_SPEED / speed);
+        Body.setVelocity(body, { x: body.velocity.x * keep, y: body.velocity.y * keep });
+      }
     });
   });
 
