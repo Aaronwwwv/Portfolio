@@ -206,8 +206,8 @@ function startPhysics() {
     context.fill();
   }
 
-  // Highlights and project name, drawn over Matter's own circles. The highlight always faces LIGHT,
-  // with a faint reflection on the far side, so it turns around the bubble as the bubble moves.
+  // Highlight and project name, drawn over Matter's own circles. The highlight always faces LIGHT,
+  // so it turns around the bubble as the bubble moves.
   Events.on(render, 'afterRender', () => {
     const context = render.context;
     const ratio = render.options.pixelRatio;
@@ -222,7 +222,6 @@ function startPhysics() {
       const towardX = (LIGHT.x - x) / distance;
       const towardY = (LIGHT.y - y) / distance;
       glow(context, x + towardX * radius * 0.55, y + towardY * radius * 0.55, radius * 0.28, 0.32);
-      glow(context, x - towardX * radius * 0.5, y - towardY * radius * 0.5, radius * 0.18, 0.08);
 
       context.font = "600 15px 'Quicksand', system-ui";
       context.fillStyle = '#F0E6CC';
