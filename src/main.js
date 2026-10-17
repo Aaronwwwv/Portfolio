@@ -4,5 +4,6 @@ import './scroll.js';
 import { initSwarm } from './swarm.js';
 import './sections.js';
 import './projects-bubbles.js';
+import './experience.js';
 
 initSwarm();
