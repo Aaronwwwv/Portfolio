@@ -136,10 +136,10 @@ button.back:hover { border-color: var(--accent); }
   .wrap { padding-block: var(--page-top) 56px; }
 }
 
-/* Narrow screens: a smaller title band, taller on the page whose title takes two lines, and the menu as a column */
+/* Narrow screens: a smaller title band, taller on the pages whose title takes two lines, and the menu as a column */
 @media (max-width: 520px) {
   :root { --title-band: 96px; }
-  :root[data-view="parcours"] { --title-band: 168px; }
+  :root[data-page="parcours"], :root[data-page="exp-tutorat"] { --title-band: 168px; }
   .menu { flex-direction: column; gap: 16px; align-items: flex-start; }
   .menu-btn { font-size: 22px; }
   .exp-stairs { grid-template-columns: minmax(0, 1fr); row-gap: 18px; }

@@ -1,7 +1,7 @@
 import gsap from 'gsap';
 import { lenis } from './scroll.js';
 
-// Hash routing: "#parcours" shows one page, "#projets/rugtraak" shows a project detail page.
+// Hash routing: "#parcours" shows one page, "#projets/rugtraak" a project detail page, "#parcours/auxiga" an experience one.
 // Pages are reached from the home menu and left with Retour, Escape or the browser history.
 const ROUTES = ['accueil', 'parcours', 'projets', 'contact'];
 const HOME = 'accueil';
@@ -15,11 +15,18 @@ const TITLES = {
   contact: 'CONTACT',
   'projet-rugtraak': 'RUGTRAAK',
   'projet-sqkeys': 'SQ KEYS',
+  'exp-mercor': 'MERCOR',
+  'exp-auxiga': 'AUXIGA',
+  'exp-tutorat': 'AARON\nTUTORAT',
+};
+// Pages with detail pages: the id prefix of their details and the list the details replace.
+const DETAILS = {
+  projets: { prefix: 'projet', list: document.getElementById('projets-liste') },
+  parcours: { prefix: 'exp', list: document.getElementById('parcours-liste') },
 };
 
 const views = document.querySelectorAll('main > section');
-const projectList = document.getElementById('projets-liste');
-const projectDetails = document.querySelectorAll('#projets > section');
+const detailPages = document.querySelectorAll('.detail-page');
 const backHome = document.getElementById('back-home');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -28,23 +35,27 @@ let timeline = null;
 
 function readRoute() {
   const [view, detail] = window.location.hash.replace(/^#/, '').split('/');
-  return { view: ROUTES.includes(view) ? view : HOME, detail };
+  const route = { view: ROUTES.includes(view) ? view : HOME, detail };
+  // A detail that names no page shows its parent page, which Escape then leaves for home.
+  if (!detailOf(route)) delete route.detail;
+  return route;
 }
 
 function detailOf(route) {
-  return route.view === 'projets' && route.detail ? document.getElementById(`projet-${route.detail}`) : null;
+  const page = route.detail && DETAILS[route.view] ? document.getElementById(`${DETAILS[route.view].prefix}-${route.detail}`) : null;
+  return page?.classList.contains('detail-page') ? page : null;
 }
 
 // Puts the DOM in the state of the route, at once, scrolled back to the top.
 function apply(route) {
   const detail = detailOf(route);
   views.forEach((section) => { section.hidden = section.id !== route.view; });
-  projectList.hidden = detail !== null;
-  projectDetails.forEach((section) => { section.hidden = section !== detail; });
-  // Retour leads home from the three menu pages; the detail pages keep their own button back to the list.
+  Object.entries(DETAILS).forEach(([view, { list }]) => { list.hidden = view === route.view && detail !== null; });
+  detailPages.forEach((section) => { section.hidden = section !== detail; });
+  // Retour leads home from the three menu pages; the detail pages keep their own button back to their page.
   backHome.hidden = route.view === HOME || detail !== null;
   // style.css sizes the title band per page from this (a two-line title needs a taller band on narrow screens).
-  document.documentElement.dataset.view = route.view;
+  document.documentElement.dataset.page = detail ? detail.id : route.view;
   lenis.scrollTo(0, { immediate: true, force: true });
   window.dispatchEvent(new CustomEvent('section:change', { detail: { title: TITLES[detail ? detail.id : route.view] } }));
   return detail;
@@ -77,16 +88,16 @@ function navigate(route) {
     );
 }
 
-// Escape climbs one level: a project detail goes back to the list, a menu page goes home.
+// Escape climbs one level: a detail page goes back to its page, a menu page goes home.
 function onKeyDown(event) {
   if (event.key !== 'Escape' || event.defaultPrevented) return;
   if (event.target.closest?.('input, textarea, select, [contenteditable]')) return;
-  if (current.detail) window.location.hash = 'projets';
+  if (current.detail) window.location.hash = current.view;
   else if (current.view !== HOME) window.location.hash = HOME;
 }
 
 document.querySelectorAll('.detail-page .back').forEach((button) => {
-  button.addEventListener('click', () => { window.location.hash = 'projets'; });
+  button.addEventListener('click', () => { window.location.hash = button.closest('main > section').id; });
 });
 
 window.addEventListener('hashchange', () => navigate(readRoute()));
