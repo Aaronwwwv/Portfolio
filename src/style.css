@@ -1,4 +1,4 @@
-/* Layout: fixed header with tab navigation, one reading column over a slow blurred tornado of gold smoke; projects float as bubbles, each detail page pairs its text with a figures ledger */
+/* Layout: a home menu leading to one page at a time, one reading column under the swarm's title band and over its blurred tornado of gold particles; projects float as bubbles, each detail page pairs its text with a figures ledger */
 :root {
   --paper: #0a0908;
   --sheet: #141210;
@@ -12,7 +12,9 @@
   --display: "Big Shoulders Stencil Display", Impact, sans-serif;
   --body: "Quicksand", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-  --header-h: 56px;
+  --title-band: 120px; /* reserved 24px below the top of the viewport for the swarm's page title; swarm.js reads it */
+  --title-gap: 48px; /* free space between the band and the page content, so the formed title keeps clear of the text */
+  --page-top: calc(24px + var(--title-band) + var(--title-gap));
   color-scheme: dark;
 }
 
@@ -20,28 +22,38 @@
 [hidden] { display: none !important; }
 body { margin: 0; }
 img { max-width: 100%; }
-body { background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--body); padding-top: var(--header-h); }
-.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: 48px 72px; display: grid; gap: 56px; }
-/* The browser also scrolls to the section named in the hash: keep that jump at the very top, clear of the fixed header */
-main > section { scroll-margin-top: calc(var(--header-h) + 48px); }
+body { background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--body); }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: var(--page-top) 72px; display: grid; gap: 56px; }
+/* The browser also scrolls to the section named in the hash on load: as tall as the top padding, that jump stays at the very top */
+main > section { scroll-margin-top: var(--page-top); }
+/* Intro: swarm.js puts .is-intro on <html> while the swarm spells the intro words; <main> waits hidden and inert, the header stays usable, and the content fades back */
+main { transition: opacity 0.6s ease; }
+html.is-intro main { opacity: 0; visibility: hidden; pointer-events: none; transition: none; }
 .stack { display: grid; gap: 56px; }
 .stack > * { min-width: 0; }
 a { color: var(--accent); text-underline-offset: 3px; }
 a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
 h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
 .label { font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: -1px; padding: 0; border: 0; }
+/* The swarm spells these titles in the band, so the text stays for screen readers only; without the swarm they show as usual */
+html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: -1px; padding: 0; border: 0; }
 
-#bg-shape { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; }
-/* Two layers drawn at half resolution by bg.js, which also sets their blur and opacity */
-#bg-shape canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; }
+/* Particle swarm drawn by swarm.js, which sets the blur of background mode once per state change */
+#swarm-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; transition: filter 0.8s ease; }
 
-.site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 10; height: var(--header-h); background: var(--paper); border-bottom: 1px solid var(--accent); }
-.site-header-inner { max-width: 980px; height: 100%; margin: 0 auto; padding-inline: 20px; display: flex; flex-wrap: wrap; align-items: center; align-content: center; justify-content: space-between; gap: 6px 20px; }
-.brand { font: 700 18px/1.2 var(--display); letter-spacing: -0.01em; color: var(--ink); text-decoration: none; }
-.site-nav { display: flex; gap: 20px; }
-.site-nav a { font: 500 14px/1.4 var(--display); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); text-decoration: none; padding-block: 4px; border-bottom: 2px solid transparent; }
-.site-nav a:hover { color: var(--ink); }
-.site-nav a.active { color: var(--ink); border-bottom-color: var(--accent); }
+/* Way back to the home menu, shown by sections.js on the three pages it leads to */
+#back-home { position: fixed; top: 16px; left: 16px; z-index: 10; font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); text-decoration: none; padding: 4px 6px; }
+#back-home:hover { color: var(--accent); }
+/* Skip button of the intro, shown by swarm.js from 0.3 s until the intro ends */
+.skip-intro { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 10; font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); background: none; border: 0; padding: 8px 12px; cursor: pointer; }
+.skip-intro:hover { color: var(--accent); }
+
+/* Home menu: three links, an underline that draws from the left on hover and on keyboard focus */
+.menu { display: flex; flex-wrap: wrap; gap: 16px 40px; margin-top: 12px; }
+.menu-btn { position: relative; font: 700 28px/1.2 var(--display); text-transform: uppercase; letter-spacing: 0.02em; color: var(--ink); text-decoration: none; padding-bottom: 4px; }
+.menu-btn::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 0.25s ease; }
+.menu-btn:hover::after, .menu-btn:focus-visible::after { transform: scaleX(1); }
 
 .hero { display: grid; gap: 18px; }
 .hero h1 { font-size: clamp(38px, 7vw, 64px); line-height: 1; font-weight: 700; }
@@ -60,19 +72,34 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 .entry h3 { font-size: 19px; }
 .entry ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 65ch; }
 
+/* Experience staircase: three links stepping right then back left, each floating on its own spot; experience.js tilts them toward a fine pointer */
+.exp-stairs { list-style: none; margin: 28px 0 0; padding: 0; display: grid; grid-template-columns: 22% minmax(0, 1fr) 22%; row-gap: 22px; }
+.exp-step { min-width: 0; grid-column: 1 / 3; justify-self: start; animation: exp-float 3s ease-in-out infinite alternate; }
+.exp-step:nth-child(2) { grid-column: 2 / 4; animation-duration: 2.6s; animation-delay: -1.7s; }
+.exp-step:nth-child(3) { animation-duration: 3.4s; animation-delay: -0.9s; }
+@keyframes exp-float { from { transform: translateY(-5px); } to { transform: translateY(5px); } }
+.exp-link { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; align-items: center; padding: 14px 22px 14px 14px; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; color: var(--ink); text-decoration: none; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); transition: border-color 0.2s ease, translate 0.2s ease; will-change: transform; }
+.exp-link:hover { border-color: rgba(201, 169, 106, 0.6); }
+/* Keyboard focus: the ring plus a small fixed lift, on top of whatever tilt is applied */
+.exp-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 14px; border-color: var(--accent); translate: 0 -4px; }
+.exp-badge { grid-row: 1 / 3; width: 56px; height: 56px; border-radius: 50%; border: 1px solid rgba(201, 169, 106, 0.6); background: var(--paper); }
+.exp-title { font: 700 22px/1.2 var(--display); letter-spacing: 0.01em; }
+.exp-date { font: 400 13px/1.5 var(--mono); color: #BDB194; } /* 8.8:1 on the link background */
+
 .bubble-intro { margin: 14px 0 20px; }
 #bubble-stage { position: relative; width: 100%; height: 80vh; min-height: 560px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: linear-gradient(180deg, rgba(201,169,106,0.03), transparent 60%); }
 #bubble-canvas { display: block; }
 /* Reduced motion: the same bubbles as static buttons */
-.bubble { position: absolute; transform: translate(-50%, -50%); border: 2px solid rgba(201, 169, 106, 0.75); border-radius: 50%; background: radial-gradient(circle 23px at 30% 30%, rgba(255, 255, 255, 0.25), transparent), rgba(201, 169, 106, 0.10); color: var(--ink); font: 600 15px var(--body); cursor: pointer; }
+.bubble { position: absolute; transform: translate(-50%, -50%); border: 2px solid rgba(201, 169, 106, 0.75); border-radius: 50%; background: radial-gradient(circle 23px at 30% 30%, rgba(255, 255, 255, 0.25), transparent), rgba(201, 169, 106, 0.10); color: var(--ink); font: 600 15px var(--body); cursor: pointer; display: grid; place-items: center; align-content: center; gap: 6px; }
+.bubble img { width: 46%; aspect-ratio: 1; border-radius: 50%; }
 /* Stand-in for a clicked bubble while it swells and fades, just before the burst */
 .bubble-pop { position: absolute; display: grid; place-items: center; border: 2px solid rgba(201, 169, 106, 0.9); border-radius: 50%; background: rgba(201, 169, 106, 0.14); color: var(--ink); font: 600 15px var(--body); pointer-events: none; }
 .burst-particle { position: absolute; background: var(--accent); border-radius: 1px; pointer-events: none; }
 
 .detail-page { display: grid; gap: 28px; }
 .detail-page > * { min-width: 0; }
-.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
-.back:hover { border-color: var(--accent); }
+button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+button.back:hover { border-color: var(--accent); }
 .detail { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 28px; }
 .detail .text { min-width: 0; display: grid; gap: 12px; align-content: start; }
 .detail h2 { font-size: 30px; }
@@ -106,11 +133,24 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
   .detail { grid-template-columns: minmax(0, 1fr); }
   .small-grid { grid-template-columns: minmax(0, 1fr); }
   .wrap, .stack { gap: 40px; }
-  .wrap { padding-block: 32px 56px; }
+  .wrap { padding-block: var(--page-top) 56px; }
 }
 
-/* Narrow screens: the name and the nav no longer fit on one row */
+/* Narrow screens: a smaller title band, taller on the pages whose title takes two lines, and the menu as a column */
 @media (max-width: 520px) {
-  :root { --header-h: 84px; }
-  .site-nav { width: 100%; }
+  :root { --title-band: 96px; }
+  :root[data-page="parcours"], :root[data-page="exp-tutorat"] { --title-band: 168px; }
+  .menu { flex-direction: column; gap: 16px; align-items: flex-start; }
+  .menu-btn { font-size: 22px; }
+  .exp-stairs { grid-template-columns: minmax(0, 1fr); row-gap: 18px; }
+  .exp-step, .exp-step:nth-child(2) { grid-column: 1; }
+  .exp-step:nth-child(2) { margin-left: 12%; }
+  .exp-step:nth-child(3) { margin-left: 24%; }
+  .exp-badge { width: 44px; height: 44px; }
+  .exp-title { font-size: 19px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exp-step { animation: none; }
+  .exp-link { transition: none; }
 }

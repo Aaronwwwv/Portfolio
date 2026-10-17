@@ -11,24 +11,14 @@
 <script type="module" src="/src/main.js"></script>
 </head>
 <body>
-<div id="bg-shape" aria-hidden="true"></div>
-<header class="site-header">
-  <div class="site-header-inner">
-    <a class="brand" href="#accueil">Aaron Dinguirard</a>
-    <nav class="site-nav" aria-label="Navigation principale">
-      <a href="#accueil">Accueil</a>
-      <a href="#parcours">Parcours</a>
-      <a href="#projets">Projets</a>
-      <a href="#contact">Contact</a>
-    </nav>
-  </div>
-</header>
+<a class="back" id="back-home" href="#accueil" hidden>Retour</a>
+<button type="button" class="skip-intro" id="skip-intro" hidden>Passer</button>
 
 <main class="wrap">
   <section id="accueil" class="stack">
     <div class="hero">
       <span class="label">Ingénierie financière, ESILV et EMLV, 4e année</span>
-      <h1>Aaron Dinguirard</h1>
+      <h1 class="swarm-title-text">Aaron Dinguirard</h1>
       <p class="lede">Étudiant en ingénierie financière. Je construis des outils de collecte de données et de backtest, en pilotant des agents de code et en vérifiant chaque résultat moi-même.</p>
       <p class="goal">Recherche d'un stage de fin d'études de 16 à 20 semaines à partir du 12 avril 2027, en finance de marché, gestion d'actifs ou finance quantitative.</p>
       <div class="contact">
@@ -36,71 +26,148 @@
         <a href="https://www.linkedin.com/in/aaron-dinguirard-2a9785258" target="_blank" rel="noopener">LinkedIn</a>
         <span>Issy-les-Moulineaux (92)</span>
       </div>
+      <nav class="menu" aria-label="Menu principal">
+        <a class="menu-btn" href="#parcours">À propos de moi</a>
+        <a class="menu-btn" href="#projets">Mes projets</a>
+        <a class="menu-btn" href="#contact">Contact</a>
+      </nav>
     </div>
   </section>
 
   <section id="parcours" class="stack">
-    <div>
-      <div class="section-head"><h2>Formation</h2></div>
-      <article class="entry">
-        <h3>Double Diplôme Ingénieur &amp; Manager, ESILV &amp; EMLV</h3>
-        <div class="meta">Sept. 2023 à aujourd'hui · Paris La Défense</div>
-        <ul>
-          <li>4e année, spécialisation Ingénierie Financière (cours en anglais à partir de 2026)</li>
-          <li>Cours : modélisation financière, gestion des risques, statistiques, analyse fonctionnelle</li>
+    <h2 class="sr-only">À propos de moi</h2>
+    <div id="parcours-liste" class="stack">
+      <div>
+        <div class="section-head"><h2>Formation</h2></div>
+        <article class="entry">
+          <h3>Double Diplôme Ingénieur &amp; Manager, ESILV &amp; EMLV</h3>
+          <div class="meta">Sept. 2023 à aujourd'hui · Paris La Défense</div>
+          <ul>
+            <li>4e année, spécialisation Ingénierie Financière (cours en anglais à partir de 2026)</li>
+            <li>Cours : modélisation financière, gestion des risques, statistiques, analyse fonctionnelle</li>
+          </ul>
+        </article>
+        <article class="entry">
+          <h3>Semestre d'échange, Kasetsart University</h3>
+          <div class="meta">Août à déc. 2025 · Bangkok, Thaïlande</div>
+          <ul>
+            <li>Cours en anglais : probabilités et statistiques, algorithmique, machine learning</li>
+          </ul>
+        </article>
+        <article class="entry">
+          <h3>Baccalauréat Scientifique, Institut Notre-Dame</h3>
+          <div class="meta">Juin 2023 · Meudon</div>
+          <ul>
+            <li>Mention Très Bien : 20/20 en Mathématiques, 19/20 en Philosophie, 18,5/20 en Physique-Chimie</li>
+          </ul>
+        </article>
+      </div>
+
+      <div>
+        <div class="section-head"><h2>Expérience professionnelle</h2></div>
+        <ul class="exp-stairs">
+          <li class="exp-step">
+            <a class="exp-link" href="#parcours/mercor">
+              <img class="exp-badge" data-logo="mercor" alt="" width="56" height="56">
+              <span class="exp-title">Spécialiste évaluation IA</span>
+              <span class="exp-date">Août à sept. 2026</span>
+            </a>
+          </li>
+          <li class="exp-step">
+            <a class="exp-link" href="#parcours/auxiga">
+              <img class="exp-badge" data-logo="auxiga" alt="" width="56" height="56">
+              <span class="exp-title">Gestionnaire Back Office</span>
+              <span class="exp-date">Juin 2024 à déc. 2025</span>
+            </a>
+          </li>
+          <li class="exp-step">
+            <a class="exp-link" href="#parcours/tutorat">
+              <img class="exp-badge" data-logo="tutorat" alt="" width="56" height="56">
+              <span class="exp-title">Tuteur en mathématiques et physique-chimie</span>
+              <span class="exp-date">Sept. 2023 à aujourd'hui</span>
+            </a>
+          </li>
         </ul>
-      </article>
-      <article class="entry">
-        <h3>Semestre d'échange, Kasetsart University</h3>
-        <div class="meta">Août à déc. 2025 · Bangkok, Thaïlande</div>
-        <ul>
-          <li>Cours en anglais : probabilités et statistiques, algorithmique, machine learning</li>
-        </ul>
-      </article>
-      <article class="entry">
-        <h3>Baccalauréat Scientifique, Institut Notre-Dame</h3>
-        <div class="meta">Juin 2023 · Meudon</div>
-        <ul>
-          <li>Mention Très Bien : 20/20 en Mathématiques, 19/20 en Philosophie, 18,5/20 en Physique-Chimie</li>
-        </ul>
-      </article>
+      </div>
     </div>
 
-    <div>
-      <div class="section-head"><h2>Expérience professionnelle</h2></div>
-      <article class="entry">
-        <h3>Spécialiste évaluation IA (freelance)</h3>
-        <div class="meta">Août 2026 à aujourd'hui · Mercor Intelligence, San Francisco (distanciel)</div>
-        <ul>
-          <li>Évaluation et notation de contenus générés par des modèles d'IA pour un laboratoire de premier plan, sur la base de grilles de qualité détaillées</li>
-          <li>Identification des erreurs récurrentes (imprécisions factuelles, formulations vagues ou illogiques) et rédaction d'un retour argumenté sur chaque cas</li>
-          <li>Recrutement à l'issue d'un processus de sélection international, avec entretien en anglais</li>
-        </ul>
+    <section id="exp-mercor" class="detail-page" hidden>
+      <button type="button" class="back">Retour au parcours</button>
+      <article class="detail">
+        <div class="text">
+          <h2 class="swarm-title-text">Mercor</h2>
+          <div class="meta">Mercor Intelligence, San Francisco (distanciel) · août à sept. 2026</div>
+
+          <h3>Mission</h3>
+          <p>Évaluation et notation de contenus générés par des modèles d'IA, sur la base de grilles de qualité détaillées. Identification des erreurs récurrentes (imprécisions factuelles, raisonnements vagues) et rédaction d'un retour argumenté sur chaque cas.</p>
+
+          <h3>Cadre</h3>
+          <p>Recrutement à l'issue d'un processus de sélection international, avec entretien en anglais. La collaboration s'est terminée en septembre 2026, à l'initiative de la plateforme.</p>
+
+          <h3>Compétences mobilisées</h3>
+          <p>Évaluation rigoureuse selon une grille ; détection d'erreurs factuelles et de raisonnement ; rédaction de retours argumentés.</p>
+        </div>
       </article>
-      <article class="entry">
-        <h3>Gestionnaire Back Office</h3>
-        <div class="meta">Juin 2024 à déc. 2025 · Auxiga, Boulogne-Billancourt</div>
-        <ul>
-          <li>Développement d'un outil VBA calculant instantanément les taux de performance des équipes, en remplacement d'un traitement manuel de 30 minutes</li>
-          <li>Conception d'outils de reporting ayant réduit le temps de reporting de 15 à 5 minutes par collaborateur</li>
-          <li>Gestion d'une base de données mise à jour en temps réel, en lien avec les équipes commerciales et bancaires</li>
-        </ul>
+    </section>
+
+    <section id="exp-auxiga" class="detail-page" hidden>
+      <button type="button" class="back">Retour au parcours</button>
+      <article class="detail">
+        <div class="text">
+          <h2 class="swarm-title-text">Auxiga</h2>
+          <div class="meta">Auxiga, Boulogne-Billancourt · juin 2024 à déc. 2025</div>
+
+          <h3>Mission</h3>
+          <p>Gestionnaire back office : suivi de la performance des équipes, reporting et gestion d'une base de données mise à jour en temps réel, en lien avec les équipes commerciales et bancaires.</p>
+
+          <h3>Réalisations</h3>
+          <p>Outil VBA calculant en un clic les taux de performance des équipes, en remplacement d'un traitement manuel de 30 minutes. Outils de reporting qui ont réduit le temps de reporting de 15 à 5 minutes par collaborateur.</p>
+
+          <h3>Compétences mobilisées</h3>
+          <p>VBA et automatisation ; reporting ; gestion de données ; coordination avec des équipes commerciales et bancaires.</p>
+        </div>
+        <aside class="ledger" aria-label="Chiffres Auxiga">
+          <span class="label">Chiffres</span>
+          <dl>
+            <div><dt>Taux de performance des équipes</dt><dd>30 min → 1 clic</dd></div>
+            <div><dt>Temps de reporting</dt><dd>15 → 5 min <small>par collaborateur</small></dd></div>
+          </dl>
+        </aside>
       </article>
-      <article class="entry">
-        <h3>Tuteur en Mathématiques et Physique-Chimie</h3>
-        <div class="meta">Sept. 2023 à aujourd'hui · Indépendant, région parisienne</div>
-        <ul>
-          <li>Plus de 3 ans de cours particuliers, environ 10 élèves du collège au post-bac (Brevet, Bac, concours)</li>
-          <li>Conception et déploiement d'un site Next.js permettant aux élèves de réserver des cours et des stages intensifs</li>
-        </ul>
+    </section>
+
+    <section id="exp-tutorat" class="detail-page" hidden>
+      <button type="button" class="back">Retour au parcours</button>
+      <article class="detail">
+        <div class="text">
+          <h2 class="swarm-title-text">Aaron Tutorat</h2>
+          <div class="meta">Indépendant, Île-de-France · depuis septembre 2023</div>
+
+          <h3>Activité</h3>
+          <p>Plus de 3 ans de cours particuliers de mathématiques et de physique-chimie, pour environ 10 élèves du collège au post-bac (brevet, bac, concours).</p>
+
+          <h3>Réalisation</h3>
+          <p>Conception et déploiement d'un site Next.js permettant aux élèves de réserver des cours et des stages intensifs.</p>
+
+          <h3>Compétences mobilisées</h3>
+          <p>Pédagogie et préparation de cours ; développement web (Next.js) ; organisation et relation avec les élèves et leurs familles.</p>
+        </div>
+        <aside class="ledger" aria-label="Chiffres Aaron Tutorat">
+          <span class="label">Chiffres</span>
+          <dl>
+            <div><dt>Cours particuliers</dt><dd>plus de 3 ans</dd></div>
+            <div><dt>Élèves suivis</dt><dd>environ 10 <small>du collège au post-bac</small></dd></div>
+          </dl>
+        </aside>
       </article>
-    </div>
+    </section>
   </section>
 
   <section id="projets">
+    <h2 class="sr-only">Projets</h2>
     <div id="projets-liste" class="stack">
       <div>
-        <div class="section-head"><h2>Projets principaux</h2></div>
+        <div class="section-head"><h2 class="swarm-title-text">Projets principaux</h2></div>
         <p class="note bubble-intro">Cliquez</p>
         <div id="bubble-stage" aria-label="Projets flottants"><canvas id="bubble-canvas"></canvas></div>
       </div>
@@ -132,33 +199,39 @@
       <article class="detail">
         <div class="text">
           <h2>RUGTRAAK</h2>
-          <div class="meta">2026 à aujourd'hui · Node.js, PostgreSQL (Supabase), React, Telegram</div>
+          <div class="meta">2026 à aujourd'hui · Node.js, PostgreSQL (Supabase), React, TypeScript, Telegram</div>
 
-          <h3>Ce que fait le bot</h3>
-          <p>RUGTRAAK suit des wallets de créateurs de memecoins sur Solana : 22 wallets, répartis en 6 groupes. Il enregistre chaque token lancé, puis teste des stratégies de prise de profit sur l'historique.</p>
-          <p>Le bot tourne 24 h/24 sur un serveur cloud gratuit et se pilote depuis Telegram. Un tableau de bord séparé sert au backtest. Le coût d'infrastructure est de 0 $.</p>
+          <h3>Objectif</h3>
+          <p>RUGTRAAK mesure, sur des données réelles, quelles stratégies de sortie offrent le meilleur rapport rendement/risque sur les memecoins Solana lancés par des acteurs identifiés. Le marché est très asymétrique : quelques tokens font ×10 ou ×20, la majorité s'effondre. La question est donc statistique avant d'être technique.</p>
 
-          <h3>Données</h3>
-          <p>La source externe utilisée au départ pour le plus haut historique a été supprimée. Le plus haut historique de chaque token est donc recalculé à partir des transactions sur la blockchain. Sur 10 tokens, l'écart maximal de l'ATH recalculé est de 0,13 %.</p>
+          <h3>Collecte des données</h3>
+          <p>Un bot surveille 22 wallets répartis en 6 groupes et enregistre chaque token alerté dans une base PostgreSQL : 913 cas pour les trois groupes principaux au 13 octobre 2026. Le plus haut historique de chaque token est recalculé à partir des événements de la blockchain, à 0,13 % près de la source de référence sur 10 tokens. Des contrôles de plausibilité excluent les valeurs aberrantes des analyses.</p>
 
-          <h3>Backtest</h3>
-          <p>L'optimiseur teste chaque combinaison de take-profit et de stop-loss, soit 231 458 configurations par exécution, puis la classe selon 9 métriques de risque.</p>
-          <p>Un Monte Carlo par permutation et par bootstrap mesure si le résultat tient au hasard de l'ordre des trades.</p>
+          <h3>Analyse quantitative</h3>
+          <p>Un tableau de bord rejoue chaque stratégie sur les trajectoires de prix réelles. Il calcule 9 métriques de risque, dont les ratios de Sharpe, Sortino et Calmar, la VaR et la CVaR, et lance des simulations Monte Carlo par permutation et par bootstrap pour mesurer la dispersion du résultat et du drawdown.</p>
+          <p>Un optimiseur teste jusqu'à 231 458 configurations de take-profit et de stop-loss par exécution. Des courbes de sensibilité distinguent un plateau robuste d'un pic isolé.</p>
 
-          <h3>Production</h3>
-          <p>Entre le 23 septembre et le 5 octobre 2026, 10 incidents de production ont été diagnostiqués et corrigés, dont une panne de 24 h causée par un quota d'API épuisé. Le projet compte environ 650 tests automatisés.</p>
+          <h3>Rigueur méthodologique</h3>
+          <p>Un ratio de Sortino 80 fois supérieur au Sharpe a révélé une erreur de formule, corrigée et couverte par des tests. Quand un take-profit et le stop-loss tombent dans la même bougie, le stop-loss est compté en premier. Les entrées sont supposées 5 % au-dessus du prix d'alerte.</p>
 
-          <h3>Limite assumée</h3>
-          <p>Sur 78 tokens, 8 trades gagnants portent tout le résultat. Aucune stratégie ne sera figée avant 500 observations.</p>
+          <h3>Limites</h3>
+          <p>Les résultats reposent sur quelques tokens très performants : la meilleure stratégie change à chaque nouveau cas extrême. Aucune stratégie n'est figée avant 500 observations par groupe, et le test hors échantillon reste à faire. Aucun achat automatique n'est actif.</p>
+
+          <h3>Exploitation</h3>
+          <p>13 incidents de production ont été diagnostiqués à partir des journaux, dont 24 h sans alerte causées par un quota d'API épuisé. Le projet compte 828 tests automatisés.</p>
+
+          <h3>Mon rôle</h3>
+          <p>Conception du système et de ses règles, pilotage du développement assisté par IA, vérification de chaque résultat, analyse des données.</p>
         </div>
         <aside class="ledger" aria-label="Chiffres RUGTRAAK">
           <span class="label">Chiffres</span>
           <dl>
+            <div><dt>Cas collectés</dt><dd>913 <small>3 groupes principaux</small></dd></div>
             <div><dt>Wallets suivis</dt><dd>22 <small>en 6 groupes</small></dd></div>
-            <div><dt>Configurations TP/SL par exécution</dt><dd>231 458</dd></div>
+            <div><dt>Configurations testées</dt><dd>231 458 <small>par exécution</small></dd></div>
+            <div><dt>Métriques de risque</dt><dd>9</dd></div>
             <div><dt>Écart max. de l'ATH recalculé</dt><dd>0,13 % <small>sur 10 tokens</small></dd></div>
-            <div><dt>Tests automatisés</dt><dd>≈ 650</dd></div>
-            <div><dt>Coût d'infrastructure</dt><dd>0 $</dd></div>
+            <div><dt>Tests automatisés</dt><dd>828</dd></div>
           </dl>
         </aside>
       </article>
@@ -204,7 +277,7 @@
   </section>
 
   <section id="contact">
-    <div class="section-head"><h2>Contact</h2></div>
+    <div class="section-head"><h2 class="swarm-title-text">Contact</h2></div>
     <dl class="contact-list">
       <div><dt class="label">E-mail</dt><dd><span>dinguirardaaron@gmail.com</span></dd></div>
       <div><dt class="label">LinkedIn</dt><dd><a href="https://www.linkedin.com/in/aaron-dinguirard-2a9785258" target="_blank" rel="noopener">linkedin.com/in/aaron-dinguirard-2a9785258</a></dd></div>
