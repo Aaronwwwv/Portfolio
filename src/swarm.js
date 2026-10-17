@@ -10,6 +10,8 @@ const INTRO_WORDS = ['AARON', 'PORTFOLIO'];
 const INTRO_HOLD_MS = 2000;
 const INTRO_SWARM_MS = 900; // free swarming before each intro word
 const TITLE_HOLD_MS = 1500;
+const INTRO_CLASS = 'is-intro'; // on <html> while the intro runs: style.css hides <main> so the words never cross body text
+const INTRO_FALLBACK_MS = 500; // the class goes at the latest this long after the intro should have ended
 const FONT_LOAD = '700 120px "Big Shoulders Stencil Display"';
 const FONT_FAMILY = '"Big Shoulders Stencil Display", Impact, sans-serif';
 const TEXT_WIDTH = 0.7; // share of the viewport width the text may take
@@ -57,6 +59,8 @@ let fontReady = null;
 let requests = 0; // the latest request wins when titles arrive faster than the font promise resolves
 let lastTitle = null; // last title received from the page
 let shown = null; // { text, zone } currently formed or forming, for a re-layout on resize
+let introTimeline = null;
+let introTimer = 0;
 
 // Recorded before initSwarm too: the first title, sent while the page loads, must not be animated over the intro.
 window.addEventListener('section:change', ({ detail }) => {
@@ -131,7 +135,27 @@ function release(next) {
   setState(next);
 }
 
+// Longest the intro timeline can take, in seconds, before the font wait.
+function introLength(count) {
+  const move = (count - 1) * STAGGER + DURATION_MAX;
+  return INTRO_WORDS.length * (INTRO_SWARM_MS / 1000 + move + INTRO_HOLD_MS / 1000) + move;
+}
+
+// Safety net for a timeline that never reaches its end (tab hidden, timeline lost): the content comes back anyway.
+function armIntroFallback(seconds) {
+  window.clearTimeout(introTimer);
+  introTimer = window.setTimeout(endIntro, seconds * 1000 + INTRO_FALLBACK_MS);
+}
+
+function endIntro() {
+  window.clearTimeout(introTimer);
+  introTimeline = null;
+  document.documentElement.classList.remove(INTRO_CLASS);
+}
+
 function stop() {
+  // A page title cutting the intro short brings the content back at once.
+  if (timeline && timeline === introTimeline) endIntro();
   timeline?.kill();
   timeline = null;
   particles.forEach((particle) => { particle.free = true; });
@@ -217,7 +241,10 @@ export async function setSwarmTitle(text, { zone = 'band', hold = TITLE_HOLD_MS 
 async function playIntro() {
   const request = ++requests;
   await fontReady;
-  if (request !== requests) return; // a page title arrived first and takes over
+  if (request !== requests) {
+    endIntro(); // a page title arrived first and takes over
+    return;
+  }
   stop();
   const tl = gsap.timeline();
   let at = 0;
@@ -226,8 +253,10 @@ async function playIntro() {
     const points = sampleText(word, zoneBox('center'));
     if (points.length) at = addForm(tl, at, points) + INTRO_HOLD_MS / 1000;
   });
-  addDisperse(tl, at);
+  tl.call(endIntro, null, addDisperse(tl, at));
   timeline = tl;
+  introTimeline = tl;
+  armIntroFallback(tl.duration());
 }
 
 function tick(time, deltaTime) {
@@ -337,5 +366,7 @@ export function initSwarm() {
     if (document.hidden) pause();
     else start();
   });
+  document.documentElement.classList.add(INTRO_CLASS);
+  armIntroFallback(introLength(particles.length));
   playIntro();
 }

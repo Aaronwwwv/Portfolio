@@ -24,6 +24,9 @@ body { background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--bod
 .wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: 48px 72px; display: grid; gap: 56px; }
 /* The browser also scrolls to the section named in the hash: keep that jump at the very top, clear of the fixed header */
 main > section { scroll-margin-top: calc(var(--header-h) + 48px); }
+/* Intro: swarm.js puts .is-intro on <html> while the swarm spells the intro words; <main> waits hidden and inert, the header stays usable, and the content fades back */
+main { transition: opacity 0.6s ease; }
+html.is-intro main { opacity: 0; visibility: hidden; pointer-events: none; transition: none; }
 .stack { display: grid; gap: 56px; }
 .stack > * { min-width: 0; }
 a { color: var(--accent); text-underline-offset: 3px; }
