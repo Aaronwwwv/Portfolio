@@ -24,7 +24,6 @@ const CRUISE_SPEED = 0.8; // ambient drift; anything faster is a throw that deca
 const THROW_DECAY = 0.987; // velocity kept per step above cruise speed
 const SAFETY_SPEED = 45; // hard cap per step, only so a body can never tunnel through a wall
 const WALL = 100;
-const LIGHT = { x: -40, y: -40 }; // where the light comes from, relative to each bubble: the highlight faces it and never turns
 const ANGULAR_START = 0.012; // rad per step, largest initial spin
 const ANGULAR_MIN = 0.004; // rad per step: the damping settles here rather than at a standstill, so a logo always turns
 const ANGULAR_MAX = 0.02; // rad per step
@@ -40,10 +39,16 @@ const RIM_COLOR = 'rgba(201, 169, 106, 0.6)';
 const RIM_WIDTH = 1; // px
 const GLOW_COLOR = 'rgba(201, 169, 106, 0.15)';
 const GLOW_SIZE = 8; // px, outer glow
-const HIGHLIGHT_COLOR = 'rgba(255, 255, 255, 0.3)';
-const HIGHLIGHT_WIDTH = 1.5; // px
-const HIGHLIGHT_INSET = 7; // px between the rim and the highlight arc
-const HIGHLIGHT_SPAN = 1.1; // rad, length of the arc
+// Light: a fixed point at the top left of the viewport. Each bubble's glint sits on the side facing it, whatever the body angle.
+const LIGHT_SOURCE = { x: 0.08, y: 0.05 }; // fractions of window.innerWidth and window.innerHeight
+const HIGHLIGHT_FOLLOW = 0.12; // share of the remaining angle the glint covers per frame
+const HIGHLIGHT_DISTANCE = 0.62; // glint centre from the bubble centre, as a share of the radius
+const HIGHLIGHT_ARC = 'rgba(240, 230, 204, 0.32)'; // #F0E6CC
+const HIGHLIGHT_ARC_WIDTH = 1.5; // px
+const HIGHLIGHT_ARC_SPAN = 0.7; // rad, length of the arc along the bubble
+const HIGHLIGHT_GLOW = 'rgba(240, 230, 204, 0.1)';
+const HIGHLIGHT_GLOW_SIZE = 0.24; // radius of the soft ellipse along the rim, as a share of the bubble radius
+const HIGHLIGHT_GLOW_FLAT = 0.45; // its depth toward the centre, relative to its length
 const LABEL_FONT = '500 12px "JetBrains Mono", ui-monospace, monospace';
 const LABEL_SPACING = 0.12; // em
 const LABEL_COLOR = '#F0E6CC';
@@ -123,18 +128,34 @@ function bodySprite(radius, ratio) {
   return canvas;
 }
 
-// Thin arc inside the rim, on the side facing LIGHT. Same size as the body sprite.
+// Soft glint facing +x: a faint ellipse stretched along the rim and a short arc that follows the bubble's curve.
+// Its centre is the sprite centre; per frame it is turned toward the light and placed HIGHLIGHT_DISTANCE out.
 function highlightSprite(radius, ratio) {
-  const size = 2 * (radius + GLOW_SIZE);
-  const { canvas, context } = sprite(size, size, ratio);
-  const facing = Math.atan2(LIGHT.y, LIGHT.x);
-  context.strokeStyle = HIGHLIGHT_COLOR;
-  context.lineWidth = HIGHLIGHT_WIDTH;
+  const distance = radius * HIGHLIGHT_DISTANCE;
+  const glow = radius * HIGHLIGHT_GLOW_SIZE;
+  const width = Math.ceil(2 * glow * HIGHLIGHT_GLOW_FLAT + 8);
+  const height = Math.ceil(2 * Math.max(glow, distance * Math.sin(HIGHLIGHT_ARC_SPAN / 2)) + 8);
+  const { canvas, context } = sprite(width, height, ratio);
+  const centreX = width / 2;
+  const centreY = height / 2;
+  context.save();
+  context.translate(centreX, centreY);
+  context.scale(HIGHLIGHT_GLOW_FLAT, 1);
+  const fill = context.createRadialGradient(0, 0, 0, 0, 0, glow);
+  fill.addColorStop(0, HIGHLIGHT_GLOW);
+  fill.addColorStop(1, 'rgba(240, 230, 204, 0)');
+  context.fillStyle = fill;
+  context.beginPath();
+  context.arc(0, 0, glow, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+  context.strokeStyle = HIGHLIGHT_ARC;
+  context.lineWidth = HIGHLIGHT_ARC_WIDTH;
   context.lineCap = 'round';
   context.beginPath();
-  context.arc(size / 2, size / 2, radius - HIGHLIGHT_INSET, facing - HIGHLIGHT_SPAN / 2, facing + HIGHLIGHT_SPAN / 2);
+  context.arc(centreX - distance, centreY, distance, -HIGHLIGHT_ARC_SPAN / 2, HIGHLIGHT_ARC_SPAN / 2);
   context.stroke();
-  return canvas;
+  return { canvas, width, height };
 }
 
 // Project name in capitals, spaced letter by letter so the spacing does not depend on canvas letterSpacing support.
@@ -285,6 +306,7 @@ function startPhysics() {
       body.plugin.data = projects[index];
       body.plugin.drift = { angle: random(0, Math.PI * 2), until: 0 };
       body.plugin.spin = { until: 0 };
+      body.plugin.light = { angle: null };
       const speed = random(0.3, 0.6);
       Body.setVelocity(body, { x: Math.cos(body.plugin.drift.angle) * speed, y: Math.sin(body.plugin.drift.angle) * speed });
       Body.setAngularVelocity(body, random(-ANGULAR_START, ANGULAR_START));
@@ -371,7 +393,37 @@ function startPhysics() {
     sprites = next;
   }
 
-  // Per frame: body, logo turned by the body angle, then the highlight and the label, which never turn.
+  // Stage position in the viewport and the light, read on show, resize and scroll rather than per frame.
+  let stageLeft = 0;
+  let stageTop = 0;
+  let lightX = 0;
+  let lightY = 0;
+
+  function readStage() {
+    const rect = stage.getBoundingClientRect();
+    stageLeft = rect.left;
+    stageTop = rect.top;
+    lightX = LIGHT_SOURCE.x * window.innerWidth;
+    lightY = LIGHT_SOURCE.y * window.innerHeight;
+  }
+
+  window.addEventListener('scroll', readStage, { passive: true });
+  window.addEventListener('resize', readStage);
+
+  // Eases each glint toward the light, the short way round across -PI/PI.
+  function glintAngle(body) {
+    const target = Math.atan2(lightY - (stageTop + body.position.y), lightX - (stageLeft + body.position.x));
+    const { light } = body.plugin;
+    if (light.angle === null) light.angle = target;
+    else {
+      let delta = target - light.angle;
+      delta -= Math.PI * 2 * Math.round(delta / (Math.PI * 2));
+      light.angle += delta * HIGHLIGHT_FOLLOW;
+    }
+    return light.angle;
+  }
+
+  // Per frame: body, logo turned by the body angle, the glint turned toward the light, then the label, which never turns.
   Events.on(render, 'afterRender', () => {
     const context = render.context;
     const ratio = render.options.pixelRatio;
@@ -394,7 +446,12 @@ function startPhysics() {
         context.drawImage(set.logo, -half, -half, 2 * half, 2 * half);
         context.restore();
       }
-      context.drawImage(set.highlight, x - outer, y - outer, 2 * outer, 2 * outer);
+      const { highlight } = set;
+      context.save();
+      context.translate(x, y);
+      context.rotate(glintAngle(body));
+      context.drawImage(highlight.canvas, radius * HIGHLIGHT_DISTANCE - highlight.width / 2, -highlight.height / 2, highlight.width, highlight.height);
+      context.restore();
       const { label } = set;
       context.drawImage(label.canvas, x - label.width / 2, y + radius + LABEL_GAP - label.height / 2, label.width, label.height);
     });
@@ -448,6 +505,7 @@ function startPhysics() {
       buildWalls(width, height);
       spawnBubbles(width, height);
       buildSprites();
+      readStage();
       shown = true;
       sync();
     },
@@ -456,6 +514,7 @@ function startPhysics() {
       buildWalls(width, height);
       keepInside(width, height);
       buildSprites();
+      readStage();
     },
     onHide() {
       shown = false;
