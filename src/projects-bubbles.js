@@ -8,6 +8,8 @@ const { Bodies, Body, Composite, Engine, Events, Mouse, MouseConstraint, Query, 
 // RUGTRAAK: emblem (ring, R and its slashes) spans x 530..1133, y 129..655; the word below starts at y 694, so the crop
 // stops at cutBelow. Its near-black background melts into the bubble body with the lighten blend.
 // Swissquote: orange disc spans x 36..436, y 37..437 on an opaque grey square; the clip stays just inside the disc edge.
+// ADMP: emblem (arrow, arcs, wheat) spans x 531..933, y 156..452 on an opaque off-white background; its diagonal needs a
+// circle of r 249 around (731, 302), which reaches the letters from y 492, so the crop stops at y 472, in the empty band.
 const projects = [
   {
     slug: 'rugtraak', name: 'RUGTRAAK', radius: 95,
@@ -16,6 +18,10 @@ const projects = [
   {
     slug: 'sqkeys', name: 'SQ Keys', radius: 85,
     logo: { src: new URL('./assets/logos/SwissQuote.png', import.meta.url).href, cx: 236, cy: 237, r: 199, blend: 'source-over' },
+  },
+  {
+    slug: 'admp', name: 'ADMP', radius: 90,
+    logo: { src: new URL('./assets/logos/admp.jpeg', import.meta.url).href, cx: 731, cy: 302, r: 259, cutBelow: 472, blend: 'source-over' },
   },
 ];
 

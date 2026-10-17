@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aaron Dinguirard, projets</title>
-<meta name="description" content="Portfolio d'Aaron Dinguirard, étudiant en ingénierie financière : projets RUGTRAAK et SQ Keys.">
+<meta name="description" content="Portfolio d'Aaron Dinguirard, étudiant en ingénierie financière : projets RUGTRAAK, SQ Keys et ADMP.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Jost:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -269,6 +269,42 @@
             <div><dt>Seuil de signature</dt><dd>2 sur 3</dd></div>
             <div><dt>Plafonds par défaut</dt><dd>5 USDC <small>par transaction</small></dd></div>
             <div><dt>Sessions d'agents en parallèle</dt><dd>3</dd></div>
+          </dl>
+        </aside>
+      </article>
+    </section>
+
+    <section id="projet-admp" class="detail-page" hidden>
+      <button type="button" class="back">Retour aux projets</button>
+      <article class="detail">
+        <div class="text">
+          <h2>ADMP</h2>
+          <div class="meta">Projet d'innovation industrielle ESILV (PI² n°014) · équipe de 6 · octobre 2026 à avril 2027 · Python, pandas, scikit-learn, Streamlit</div>
+
+          <h3>Objectif</h3>
+          <p>Concevoir un outil en Python, avec interface web, qui alloue dynamiquement un portefeuille de contrats à terme sur matières premières et compare plusieurs familles de stratégies dans un cadre de backtest commun.</p>
+
+          <h3>Problématique</h3>
+          <p>Quelles méthodes quantitatives font réellement mieux qu'un portefeuille équipondéré une fois les frais et les biais de backtest pris en compte ?</p>
+
+          <h3>Stratégies comparées</h3>
+          <p>Équipondération (référence), pondération inverse de la volatilité, Markowitz (variance minimale, Sharpe maximal), parité de risque, suivi de tendance à volatilité cible, prévisions par machine learning.</p>
+
+          <h3>Méthode</h3>
+          <p>Aucune information du futur (un signal calculé le jour t est exécuté le jour t+1). Séries continues ajustées pour les roulements de contrats. Frais de transaction déduits à chaque rééquilibrage. Validation glissante pour les modèles de prévision.</p>
+
+          <h3>Mon rôle</h3>
+          <p>Responsable technique et intégrateur : architecture du code, moteur de backtest, relecture et validation des contributions de l'équipe, rédaction de la partie méthodologique du dossier de cadrage. Développement assisté par IA (Claude Code), avec vérification par des tests contre des valeurs calculées indépendamment.</p>
+
+          <h3>État</h3>
+          <p>Projet en cours. Dossier de cadrage de 10 pages rédigé. Développement du moteur de backtest à venir. Aucun résultat à ce jour.</p>
+        </div>
+        <aside class="ledger" aria-label="Chiffres ADMP">
+          <span class="label">Chiffres</span>
+          <dl>
+            <div><dt>Matières premières</dt><dd>8 <small>version initiale</small></dd></div>
+            <div><dt>Équipe</dt><dd>6 <small>étudiants</small></dd></div>
+            <div><dt>Showroom</dt><dd>6 avril 2027</dd></div>
           </dl>
         </aside>
       </article>

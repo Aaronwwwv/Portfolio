@@ -16,6 +16,7 @@ const TITLES = {
   contact: 'CONTACT',
   'projet-rugtraak': 'RUGTRAAK',
   'projet-sqkeys': 'SQ KEYS',
+  'projet-admp': 'ADMP',
   'exp-mercor': 'MERCOR',
   'exp-auxiga': 'AUXIGA',
   'exp-tutorat': 'AARON\nTUTORAT',
