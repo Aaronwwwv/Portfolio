@@ -48,6 +48,7 @@ function apply(route) {
   projectDetails.forEach((section) => { section.hidden = section !== detail; });
   shownIndex = ORDER.indexOf(route.view);
   lenis.scrollTo(0, { immediate: true, force: true });
+  window.dispatchEvent(new CustomEvent('section:change', { detail: { title: { accueil: 'ACCUEIL', parcours: 'PARCOURS', projets: 'PROJETS', contact: 'CONTACT', 'projet-rugtraak': 'RUGTRAAK', 'projet-sqkeys': 'SQ KEYS' }[detail ? detail.id : route.view] } }));
   return detail;
 }
 

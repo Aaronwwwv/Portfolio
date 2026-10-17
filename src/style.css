@@ -34,6 +34,8 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 #bg-shape { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; }
 /* Two layers drawn at half resolution by bg.js, which also sets their blur and opacity */
 #bg-shape canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; }
+/* Particle swarm drawn by swarm.js, which sets the blur of background mode once per state change */
+#swarm-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; transition: filter 0.8s ease; }
 
 .site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 10; height: var(--header-h); background: var(--paper); border-bottom: 1px solid var(--accent); }
 .site-header-inner { max-width: 980px; height: 100%; margin: 0 auto; padding-inline: 20px; display: flex; flex-wrap: wrap; align-items: center; align-content: center; justify-content: space-between; gap: 6px 20px; }
