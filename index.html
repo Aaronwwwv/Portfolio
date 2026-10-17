@@ -129,33 +129,39 @@
       <article class="detail">
         <div class="text">
           <h2>RUGTRAAK</h2>
-          <div class="meta">2026 à aujourd'hui · Node.js, PostgreSQL (Supabase), React, Telegram</div>
+          <div class="meta">2026 à aujourd'hui · Node.js, PostgreSQL (Supabase), React, TypeScript, Telegram</div>
 
-          <h3>Ce que fait le bot</h3>
-          <p>RUGTRAAK suit des wallets de créateurs de memecoins sur Solana : 22 wallets, répartis en 6 groupes. Il enregistre chaque token lancé, puis teste des stratégies de prise de profit sur l'historique.</p>
-          <p>Le bot tourne 24 h/24 sur un serveur cloud gratuit et se pilote depuis Telegram. Un tableau de bord séparé sert au backtest. Le coût d'infrastructure est de 0 $.</p>
+          <h3>Objectif</h3>
+          <p>RUGTRAAK mesure, sur des données réelles, quelles stratégies de sortie offrent le meilleur rapport rendement/risque sur les memecoins Solana lancés par des acteurs identifiés. Le marché est très asymétrique : quelques tokens font ×10 ou ×20, la majorité s'effondre. La question est donc statistique avant d'être technique.</p>
 
-          <h3>Données</h3>
-          <p>La source externe utilisée au départ pour le plus haut historique a été supprimée. Le plus haut historique de chaque token est donc recalculé à partir des transactions sur la blockchain. Sur 10 tokens, l'écart maximal de l'ATH recalculé est de 0,13 %.</p>
+          <h3>Collecte des données</h3>
+          <p>Un bot surveille 22 wallets répartis en 6 groupes et enregistre chaque token alerté dans une base PostgreSQL : 913 cas pour les trois groupes principaux au 13 octobre 2026. Le plus haut historique de chaque token est recalculé à partir des événements de la blockchain, à 0,13 % près de la source de référence sur 10 tokens. Des contrôles de plausibilité excluent les valeurs aberrantes des analyses.</p>
 
-          <h3>Backtest</h3>
-          <p>L'optimiseur teste chaque combinaison de take-profit et de stop-loss, soit 231 458 configurations par exécution, puis la classe selon 9 métriques de risque.</p>
-          <p>Un Monte Carlo par permutation et par bootstrap mesure si le résultat tient au hasard de l'ordre des trades.</p>
+          <h3>Analyse quantitative</h3>
+          <p>Un tableau de bord rejoue chaque stratégie sur les trajectoires de prix réelles. Il calcule 9 métriques de risque, dont les ratios de Sharpe, Sortino et Calmar, la VaR et la CVaR, et lance des simulations Monte Carlo par permutation et par bootstrap pour mesurer la dispersion du résultat et du drawdown.</p>
+          <p>Un optimiseur teste jusqu'à 231 458 configurations de take-profit et de stop-loss par exécution. Des courbes de sensibilité distinguent un plateau robuste d'un pic isolé.</p>
 
-          <h3>Production</h3>
-          <p>Entre le 23 septembre et le 5 octobre 2026, 10 incidents de production ont été diagnostiqués et corrigés, dont une panne de 24 h causée par un quota d'API épuisé. Le projet compte environ 650 tests automatisés.</p>
+          <h3>Rigueur méthodologique</h3>
+          <p>Un ratio de Sortino 80 fois supérieur au Sharpe a révélé une erreur de formule, corrigée et couverte par des tests. Quand un take-profit et le stop-loss tombent dans la même bougie, le stop-loss est compté en premier. Les entrées sont supposées 5 % au-dessus du prix d'alerte.</p>
 
-          <h3>Limite assumée</h3>
-          <p>Sur 78 tokens, 8 trades gagnants portent tout le résultat. Aucune stratégie ne sera figée avant 500 observations.</p>
+          <h3>Limites</h3>
+          <p>Les résultats reposent sur quelques tokens très performants : la meilleure stratégie change à chaque nouveau cas extrême. Aucune stratégie n'est figée avant 500 observations par groupe, et le test hors échantillon reste à faire. Aucun achat automatique n'est actif.</p>
+
+          <h3>Exploitation</h3>
+          <p>13 incidents de production ont été diagnostiqués à partir des journaux, dont 24 h sans alerte causées par un quota d'API épuisé. Le projet compte 828 tests automatisés.</p>
+
+          <h3>Mon rôle</h3>
+          <p>Conception du système et de ses règles, pilotage du développement assisté par IA, vérification de chaque résultat, analyse des données.</p>
         </div>
         <aside class="ledger" aria-label="Chiffres RUGTRAAK">
           <span class="label">Chiffres</span>
           <dl>
+            <div><dt>Cas collectés</dt><dd>913 <small>3 groupes principaux</small></dd></div>
             <div><dt>Wallets suivis</dt><dd>22 <small>en 6 groupes</small></dd></div>
-            <div><dt>Configurations TP/SL par exécution</dt><dd>231 458</dd></div>
+            <div><dt>Configurations testées</dt><dd>231 458 <small>par exécution</small></dd></div>
+            <div><dt>Métriques de risque</dt><dd>9</dd></div>
             <div><dt>Écart max. de l'ATH recalculé</dt><dd>0,13 % <small>sur 10 tokens</small></dd></div>
-            <div><dt>Tests automatisés</dt><dd>≈ 650</dd></div>
-            <div><dt>Coût d'infrastructure</dt><dd>0 $</dd></div>
+            <div><dt>Tests automatisés</dt><dd>828</dd></div>
           </dl>
         </aside>
       </article>
