@@ -90,7 +90,7 @@
 body { margin: 0; }
 img { max-width: 100%; }
 /* The paper sits on <html> and crossfades when the theme changes, so a light page never flashes in */
-html { background: var(--paper); transition: background-color 0.5s ease; }
+html { background: var(--paper); transition: background-color 0.5s ease; -webkit-tap-highlight-color: transparent; }
 /* overflow-x: clip keeps a page scaled up by the warp from widening the document */
 body { color: var(--ink); font: 400 clamp(17px, 0.9rem + 0.35vw, 22px)/1.6 var(--body); overflow-x: clip; }
 .wrap { width: min(100% - 2 * var(--gutter), var(--wrap-max)); margin: 0 auto; padding-block: var(--page-top) var(--page-bottom); display: grid; gap: 56px; }
@@ -104,6 +104,8 @@ html.is-intro main { opacity: 0; visibility: hidden; pointer-events: none; trans
 .stack { display: grid; gap: 56px; }
 .stack > * { min-width: 0; }
 a { color: var(--accent-text); text-underline-offset: 3px; }
+/* No double-tap zoom wait on what is tapped */
+a, button { touch-action: manipulation; }
 a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 2px; }
 h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
 .label { font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
@@ -147,17 +149,16 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 
 /* Way back to the home menu, shown by sections.js on the three pages it leads to */
 #back-home { position: fixed; top: 16px; left: 16px; z-index: 10; font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); text-decoration: none; padding: 4px 6px; }
-#back-home:hover { color: var(--accent); }
+
 /* Skip button of the intro, shown by swarm.js from 0.3 s until the intro ends */
 .skip-intro { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 10; font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); background: none; border: 0; padding: 8px 12px; cursor: pointer; }
-.skip-intro:hover { color: var(--accent); }
 
 /* Home menu: three links across the width at the foot of the screen, an underline that draws from the left on hover and on keyboard focus */
 /* One row: at this size the three labels are wider than the page below about 1700px, so a label breaks inside its column instead of the row wrapping */
 .menu { display: flex; flex-wrap: nowrap; justify-content: space-between; align-items: end; gap: 16px clamp(24px, 4vw, 80px); margin-top: auto; padding-top: clamp(24px, 6svh, 80px); }
 .menu-btn { position: relative; flex: 0 1 auto; text-wrap: balance; font: 700 clamp(28px, 4vw, 72px)/1.1 var(--display); text-transform: uppercase; letter-spacing: 0.02em; color: var(--ink); text-decoration: none; padding-bottom: 4px; }
 .menu-btn::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 0.25s ease; }
-.menu-btn:hover::after, .menu-btn:focus-visible::after { transform: scaleX(1); }
+.menu-btn:focus-visible::after { transform: scaleX(1); }
 
 /* Home: the hero fills the screen, the tagline large at the top, the menu pushed to the bottom */
 #accueil { display: flex; flex-direction: column; }
@@ -190,7 +191,7 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 .exp-step:nth-child(3) { animation-duration: 3.4s; animation-delay: -0.9s; }
 @keyframes exp-float { from { transform: translateY(-5px); } to { transform: translateY(5px); } }
 .exp-link { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 18px; align-items: center; padding: clamp(14px, 1.2vw, 22px) clamp(22px, 2vw, 36px) clamp(14px, 1.2vw, 22px) clamp(14px, 1.2vw, 22px); background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; color: var(--ink); text-decoration: none; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); transition: border-color 0.2s ease, translate 0.2s ease; will-change: transform; }
-.exp-link:hover { border-color: rgba(201, 169, 106, 0.6); }
+
 /* Keyboard focus: the ring plus a small fixed lift, on top of whatever tilt is applied */
 .exp-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 14px; border-color: var(--accent); translate: 0 -4px; }
 .exp-badge { grid-row: 1 / 3; width: 56px; height: 56px; border-radius: 50%; border: 1px solid rgba(201, 169, 106, 0.6); background: var(--paper); }
@@ -198,7 +199,7 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 .exp-date { font: 400 clamp(13px, 0.7rem + 0.25vw, 17px)/1.5 var(--mono); color: #BDB194; } /* 8.8:1 on the link background */
 
 /* No visible box: projects-bubbles.js draws the frame on its canvas, a travelling light and the sides the bubbles hit */
-#bubble-stage { position: relative; width: 100%; height: 80vh; min-height: 560px; margin-top: 24px; overflow: hidden; }
+#bubble-stage { position: relative; width: 100%; height: 80svh; min-height: 560px; margin-top: 24px; overflow: hidden; }
 #bubble-canvas { display: block; }
 /* Reduced motion: the same bubbles as static buttons */
 .bubble { position: absolute; transform: translate(-50%, -50%); border: 2px solid rgba(201, 169, 106, 0.75); border-radius: 50%; background: radial-gradient(circle 23px at 30% 30%, rgba(255, 255, 255, 0.25), transparent), rgba(201, 169, 106, 0.10); color: var(--ink); font: 600 15px var(--body); cursor: pointer; display: grid; place-items: center; align-content: center; gap: 6px; }
@@ -211,7 +212,16 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 .detail-page { display: grid; gap: 28px; min-height: var(--page-min); grid-template-rows: auto 1fr; }
 .detail-page > * { min-width: 0; }
 button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--accent-text); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
-button.back:hover { border-color: var(--accent); }
+/* Press feedback, on every input: the tap highlight is off, so these are what a finger sees */
+.exp-link:active, button.back:active, .menu-btn:active, .bubble:active { scale: 0.97; transition: scale 0.1s ease-out; }
+/* Hover only where there is a real hover: on touch screens a tapped element would keep it */
+@media (hover: hover) and (pointer: fine) {
+  #back-home:hover { color: var(--accent); }
+  .skip-intro:hover { color: var(--accent); }
+  .menu-btn:hover::after { transform: scaleX(1); }
+  .exp-link:hover { border-color: rgba(201, 169, 106, 0.6); }
+  button.back:hover { border-color: var(--accent); }
+}
 .detail { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 28px; align-self: center; }
 .detail .text { min-width: 0; display: grid; gap: 12px; align-content: start; }
 .detail h2 { font-size: clamp(28px, 1.2rem + 1.6vw, 52px); }

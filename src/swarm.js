@@ -784,7 +784,9 @@ export function initSwarm() {
   dockOrder = new Int16Array(count).fill(-1);
 
   let resizeTimer = 0;
+  // A height-only change is the mobile URL bar sliding in or out: the canvas keeps its size.
   window.addEventListener('resize', () => {
+    if (window.innerWidth === width) return;
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(resize, RESIZE_DELAY);
   });

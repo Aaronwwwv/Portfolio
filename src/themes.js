@@ -287,7 +287,9 @@ document.body.prepend(canvas);
 context = canvas.getContext('2d');
 topo.attach(context, window.innerWidth, window.innerHeight);
 resize();
+// A height-only change is the mobile URL bar sliding in or out: the canvas keeps its size and is stretched for that.
 window.addEventListener('resize', () => {
+  if (window.innerWidth === width) return;
   resize();
   if (reducedMotion) setStaticTheme(document.documentElement.dataset.theme);
 });

@@ -6,10 +6,11 @@ import gsap from 'gsap';
 // Auxiga: 680x472, white with a map on the right; the X and its dot span x 31..90, y 210..263, enclosing circle r 36 at
 // (57, 237), 15 % of margin, still clear of the A of the wordmark from x 99.
 // Aaron Tutorat: 1664x928, dark blue-black; the AT spans x 515..1161, y 230..701, enclosing circle r 378 at (852, 461.5), 10 % of margin.
+// That square (x 437..1267, y 46..876) is stored resampled to 128x128 in aarontutorat-badge.png (24 KB instead of 1.6 MB).
 const LOGOS = {
   mercor: { src: new URL('./assets/logos/mercor.png', import.meta.url).href, cx: 206, cy: 198.5, r: 194 },
   auxiga: { src: new URL('./assets/logos/auxiga.png', import.meta.url).href, cx: 57, cy: 237, r: 41.5 },
-  tutorat: { src: new URL('./assets/logos/aarontutorat.png', import.meta.url).href, cx: 852, cy: 461.5, r: 415 },
+  tutorat: { src: new URL('./assets/logos/aarontutorat-badge.png', import.meta.url).href, cx: 64, cy: 64, r: 64 },
 };
 const BADGE_SIZE = 112; // px, side of the cropped badge: twice the 56 px desktop badge
 const TILT_MAX = 8; // deg, on each axis

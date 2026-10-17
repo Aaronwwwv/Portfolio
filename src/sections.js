@@ -43,6 +43,7 @@ const depthOf = (route) => (route.view === HOME ? 0 : route.detail ? 2 : 1);
 const views = document.querySelectorAll('main > section');
 const detailPages = document.querySelectorAll('.detail-page');
 const backHome = document.getElementById('back-home');
+const themeColor = document.querySelector('meta[name="theme-color"]');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 let current = readRoute();
@@ -77,6 +78,8 @@ function apply(route) {
   const theme = detail && THEMES[detail.id];
   if (theme) document.documentElement.dataset.theme = theme;
   else delete document.documentElement.dataset.theme;
+  // The browser bar takes the colour of the page's paper.
+  themeColor.content = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
   lenis.scrollTo(0, { immediate: true, force: true });
   window.dispatchEvent(new CustomEvent('section:change', { detail: { title: TITLES[detail ? detail.id : route.view] } }));
   return detail;
