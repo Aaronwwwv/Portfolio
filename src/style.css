@@ -86,8 +86,8 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 .exp-title { font: 700 22px/1.2 var(--display); letter-spacing: 0.01em; }
 .exp-date { font: 400 13px/1.5 var(--mono); color: #BDB194; } /* 8.8:1 on the link background */
 
-.bubble-intro { margin: 14px 0 20px; }
-#bubble-stage { position: relative; width: 100%; height: 80vh; min-height: 560px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: linear-gradient(180deg, rgba(201,169,106,0.03), transparent 60%); }
+/* No visible box: projects-bubbles.js draws the frame on its canvas, a travelling light and the sides the bubbles hit */
+#bubble-stage { position: relative; width: 100%; height: 80vh; min-height: 560px; margin-top: 24px; overflow: hidden; }
 #bubble-canvas { display: block; }
 /* Reduced motion: the same bubbles as static buttons */
 .bubble { position: absolute; transform: translate(-50%, -50%); border: 2px solid rgba(201, 169, 106, 0.75); border-radius: 50%; background: radial-gradient(circle 23px at 30% 30%, rgba(255, 255, 255, 0.25), transparent), rgba(201, 169, 106, 0.10); color: var(--ink); font: 600 15px var(--body); cursor: pointer; display: grid; place-items: center; align-content: center; gap: 6px; }
