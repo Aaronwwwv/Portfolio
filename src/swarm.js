@@ -49,6 +49,7 @@ const INTRO_HEIGHT = 0.6; // share of the viewport height AARON may take, centre
 const BAND_TOP = 24; // px from the top of the viewport to the title band; the band height is --title-band in style.css
 const SWARM_CLASS = 'swarm-on'; // on <html> while the swarm runs: style.css then hides the headings the swarm spells
 const TEXT_FIT = 0.8; // share of the band height the title letters may take, centred in the band
+const BAND_SIDE_CLEAR = 96; // px kept free on each side of a page title, so it never meets the fixed Retour link (16..80 px)
 const SAMPLE_REFINE = 0.9; // the grid step shrinks by this factor until the letters hold one point per particle
 const ALPHA_THRESHOLD = 128;
 const DURATION_MIN = 1.1; // s, each particle's move
@@ -109,7 +110,7 @@ function readLayout() {
 }
 
 function zoneBox(zone) {
-  const boxWidth = width * (zone === 'center' ? INTRO_WIDTH : TEXT_WIDTH);
+  const boxWidth = zone === 'center' ? width * INTRO_WIDTH : Math.min(width * TEXT_WIDTH, width - 2 * BAND_SIDE_CLEAR);
   const boxHeight = zone === 'center' ? height * INTRO_HEIGHT : titleBand * TEXT_FIT;
   const top = zone === 'center' ? (height - boxHeight) / 2 : BAND_TOP + (titleBand - boxHeight) / 2;
   return { x: (width - boxWidth) / 2, y: top, width: boxWidth, height: boxHeight };
