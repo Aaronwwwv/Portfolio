@@ -12,23 +12,13 @@
 </head>
 <body>
 <div id="bg-shape" aria-hidden="true"></div>
-<header class="site-header">
-  <div class="site-header-inner">
-    <a class="brand" href="#accueil">Aaron Dinguirard</a>
-    <nav class="site-nav" aria-label="Navigation principale">
-      <a href="#accueil">Accueil</a>
-      <a href="#parcours">Parcours</a>
-      <a href="#projets">Projets</a>
-      <a href="#contact">Contact</a>
-    </nav>
-  </div>
-</header>
+<a class="back" id="back-home" href="#accueil" hidden>Retour</a>
 
 <main class="wrap">
   <section id="accueil" class="stack">
     <div class="hero">
       <span class="label">Ingénierie financière, ESILV et EMLV, 4e année</span>
-      <h1>Aaron Dinguirard</h1>
+      <h1 class="swarm-title-text">Aaron Dinguirard</h1>
       <p class="lede">Étudiant en ingénierie financière. Je construis des outils de collecte de données et de backtest, en pilotant des agents de code et en vérifiant chaque résultat moi-même.</p>
       <p class="goal">Recherche d'un stage de fin d'études de 16 à 20 semaines à partir du 12 avril 2027, en finance de marché, gestion d'actifs ou finance quantitative.</p>
       <div class="contact">
@@ -36,11 +26,16 @@
         <a href="https://www.linkedin.com/in/aaron-dinguirard-2a9785258" target="_blank" rel="noopener">LinkedIn</a>
         <span>Issy-les-Moulineaux (92)</span>
       </div>
+      <nav class="menu" aria-label="Menu principal">
+        <a class="menu-btn" href="#parcours">À propos de moi</a>
+        <a class="menu-btn" href="#projets">Mes projets</a>
+        <a class="menu-btn" href="#contact">Contact</a>
+      </nav>
     </div>
   </section>
 
   <section id="parcours" class="stack">
-    <h2 class="sr-only">Parcours</h2>
+    <h2 class="sr-only">À propos de moi</h2>
     <div>
       <div class="section-head"><h2>Formation</h2></div>
       <article class="entry">
@@ -102,7 +97,7 @@
     <h2 class="sr-only">Projets</h2>
     <div id="projets-liste" class="stack">
       <div>
-        <div class="section-head"><h2>Projets principaux</h2></div>
+        <div class="section-head"><h2 class="swarm-title-text">Projets principaux</h2></div>
         <p class="note bubble-intro">Cliquez</p>
         <div id="bubble-stage" aria-label="Projets flottants"><canvas id="bubble-canvas"></canvas></div>
       </div>
@@ -206,7 +201,7 @@
   </section>
 
   <section id="contact">
-    <div class="section-head"><h2>Contact</h2></div>
+    <div class="section-head"><h2 class="swarm-title-text">Contact</h2></div>
     <dl class="contact-list">
       <div><dt class="label">E-mail</dt><dd><span>dinguirardaaron@gmail.com</span></dd></div>
       <div><dt class="label">LinkedIn</dt><dd><a href="https://www.linkedin.com/in/aaron-dinguirard-2a9785258" target="_blank" rel="noopener">linkedin.com/in/aaron-dinguirard-2a9785258</a></dd></div>

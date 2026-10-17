@@ -20,7 +20,8 @@ const FONT_LOAD = '700 120px "Big Shoulders Stencil Display"';
 const FONT_FAMILY = '"Big Shoulders Stencil Display", Impact, sans-serif';
 const TEXT_WIDTH = 0.7; // share of the viewport width the text may take
 const INTRO_HEIGHT = 0.4; // share of the viewport height for the intro words, centred
-const BAND_OFFSET = 12; // px between the header and the top of the title band; the band height is --title-band in style.css
+const BAND_TOP = 24; // px from the top of the viewport to the title band; the band height is --title-band in style.css
+const SWARM_CLASS = 'swarm-on'; // on <html> while the swarm runs: style.css then hides the headings the swarm spells
 const TEXT_FIT = 0.8; // share of the band height the title letters may take, centred in the band
 const SAMPLE_REFINE = 0.9; // the grid step shrinks by this factor until the letters hold one point per particle
 const ALPHA_THRESHOLD = 128;
@@ -56,8 +57,7 @@ let context = null;
 let sampler = null;
 let width = 0; // viewport, in CSS px
 let height = 0;
-let headerHeight = 0; // px, read with the title band on each resize
-let titleBand = 0;
+let titleBand = 0; // px, read on each resize
 let particles = [];
 let state = 'swarm';
 let timeline = null;
@@ -76,17 +76,15 @@ window.addEventListener('section:change', ({ detail }) => {
   if (canvas) setSwarmTitle(lastTitle);
 });
 
-// The band sits right under the header and is as tall as the space style.css reserves above the page content.
+// The band is as tall as the space style.css reserves above the page content.
 function readLayout() {
-  const header = document.querySelector('.site-header');
-  headerHeight = header ? parseFloat(getComputedStyle(header).height) || 0 : 0;
   titleBand = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--title-band')) || 0;
 }
 
 function zoneBox(zone) {
   const boxWidth = width * TEXT_WIDTH;
   const boxHeight = zone === 'center' ? height * INTRO_HEIGHT : titleBand * TEXT_FIT;
-  const top = zone === 'center' ? (height - boxHeight) / 2 : headerHeight + BAND_OFFSET + (titleBand - boxHeight) / 2;
+  const top = zone === 'center' ? (height - boxHeight) / 2 : BAND_TOP + (titleBand - boxHeight) / 2;
   return { x: (width - boxWidth) / 2, y: top, width: boxWidth, height: boxHeight };
 }
 
@@ -400,6 +398,7 @@ export function initSwarm() {
     setSwarmTitle(lastTitle);
     return;
   }
+  document.documentElement.classList.add(SWARM_CLASS);
   setState('swarm');
   start();
   document.addEventListener('visibilitychange', () => {

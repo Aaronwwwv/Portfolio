@@ -12,8 +12,7 @@
   --display: "Big Shoulders Stencil Display", Impact, sans-serif;
   --body: "Quicksand", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-  --header-h: 56px;
-  --title-band: 120px; /* reserved under the header for the swarm's page title; swarm.js reads it */
+  --title-band: 120px; /* reserved 24px below the top of the viewport for the swarm's page title; swarm.js reads it */
   color-scheme: dark;
 }
 
@@ -21,10 +20,8 @@
 [hidden] { display: none !important; }
 body { margin: 0; }
 img { max-width: 100%; }
-body { background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--body); padding-top: var(--header-h); }
-.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: calc(48px + var(--title-band)) 72px; display: grid; gap: 56px; }
-/* The browser also scrolls to the section named in the hash: keep that jump at the very top, clear of the fixed header */
-main > section { scroll-margin-top: calc(var(--header-h) + 48px); }
+body { background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--body); }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: calc(24px + var(--title-band)) 72px; display: grid; gap: 56px; }
 /* Intro: swarm.js puts .is-intro on <html> while the swarm spells the intro words; <main> waits hidden and inert, the header stays usable, and the content fades back */
 main { transition: opacity 0.6s ease; }
 html.is-intro main { opacity: 0; visibility: hidden; pointer-events: none; transition: none; }
@@ -35,6 +32,8 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
 .label { font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: -1px; padding: 0; border: 0; }
+/* The swarm spells these titles in the band, so the text stays for screen readers only; without the swarm they show as usual */
+html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: -1px; padding: 0; border: 0; }
 
 #bg-shape { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; }
 /* Two layers drawn at half resolution by bg.js, which also sets their blur and opacity */
@@ -42,13 +41,15 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 /* Particle swarm drawn by swarm.js, which sets the blur of background mode once per state change */
 #swarm-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; transition: filter 0.8s ease; }
 
-.site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 10; height: var(--header-h); background: var(--paper); border-bottom: 1px solid var(--accent); }
-.site-header-inner { max-width: 980px; height: 100%; margin: 0 auto; padding-inline: 20px; display: flex; flex-wrap: wrap; align-items: center; align-content: center; justify-content: space-between; gap: 6px 20px; }
-.brand { font: 700 18px/1.2 var(--display); letter-spacing: -0.01em; color: var(--ink); text-decoration: none; }
-.site-nav { display: flex; gap: 20px; }
-.site-nav a { font: 500 14px/1.4 var(--display); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); text-decoration: none; padding-block: 4px; border-bottom: 2px solid transparent; }
-.site-nav a:hover { color: var(--ink); }
-.site-nav a.active { color: var(--ink); border-bottom-color: var(--accent); }
+/* Way back to the home menu, shown by sections.js on the three pages it leads to */
+#back-home { position: fixed; top: 16px; left: 16px; z-index: 10; font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); text-decoration: none; padding: 4px 6px; }
+#back-home:hover { color: var(--accent); }
+
+/* Home menu: three links, an underline that draws from the left on hover and on keyboard focus */
+.menu { display: flex; flex-wrap: wrap; gap: 16px 40px; margin-top: 12px; }
+.menu-btn { position: relative; font: 700 28px/1.2 var(--display); text-transform: uppercase; letter-spacing: 0.02em; color: var(--ink); text-decoration: none; padding-bottom: 4px; }
+.menu-btn::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 0.25s ease; }
+.menu-btn:hover::after, .menu-btn:focus-visible::after { transform: scaleX(1); }
 
 .hero { display: grid; gap: 18px; }
 .hero h1 { font-size: clamp(38px, 7vw, 64px); line-height: 1; font-weight: 700; }
@@ -78,8 +79,8 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 
 .detail-page { display: grid; gap: 28px; }
 .detail-page > * { min-width: 0; }
-.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
-.back:hover { border-color: var(--accent); }
+button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+button.back:hover { border-color: var(--accent); }
 .detail { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 28px; }
 .detail .text { min-width: 0; display: grid; gap: 12px; align-content: start; }
 .detail h2 { font-size: 30px; }
@@ -113,11 +114,12 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
   .detail { grid-template-columns: minmax(0, 1fr); }
   .small-grid { grid-template-columns: minmax(0, 1fr); }
   .wrap, .stack { gap: 40px; }
-  .wrap { padding-block: calc(32px + var(--title-band)) 56px; }
+  .wrap { padding-block: calc(24px + var(--title-band)) 56px; }
 }
 
-/* Narrow screens: the name and the nav no longer fit on one row */
+/* Narrow screens: a smaller title band and the menu as a column */
 @media (max-width: 520px) {
-  :root { --header-h: 84px; --title-band: 96px; }
-  .site-nav { width: 100%; }
+  :root { --title-band: 96px; }
+  .menu { flex-direction: column; gap: 16px; align-items: flex-start; }
+  .menu-btn { font-size: 22px; }
 }
