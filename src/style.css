@@ -76,7 +76,8 @@ body { margin: 0; }
 img { max-width: 100%; }
 /* The paper sits on <html> and crossfades when the theme changes, so a light page never flashes in */
 html { background: var(--paper); transition: background-color 0.5s ease; }
-body { color: var(--ink); font: 400 16px/1.6 var(--body); }
+/* overflow-x: clip keeps a page scaled up by the tunnel from widening the document */
+body { color: var(--ink); font: 400 16px/1.6 var(--body); overflow-x: clip; }
 .wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: var(--page-top) 72px; display: grid; gap: 56px; }
 /* The browser also scrolls to the section named in the hash on load: as tall as the top padding, that jump stays at the very top */
 main > section { scroll-margin-top: var(--page-top); }
@@ -97,6 +98,9 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 #swarm-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; transition: filter 0.8s ease; }
 /* Background effect of a themed page, drawn by themes.js under the swarm; it fades in and out with the paper */
 #theme-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -2; opacity: 0; transition: opacity 0.5s ease; }
+/* Rings of the tunnel between a list and a detail page, drawn by tunnel.js over the content while a tunnel runs only */
+#tunnel-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; display: none; }
+#tunnel-canvas.is-running { display: block; }
 
 /* Way back to the home menu, shown by sections.js on the three pages it leads to */
 #back-home { position: fixed; top: 16px; left: 16px; z-index: 10; font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); text-decoration: none; padding: 4px 6px; }

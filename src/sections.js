@@ -1,5 +1,6 @@
 import gsap from 'gsap';
 import { lenis } from './scroll.js';
+import { runTunnel, finishTunnel } from './tunnel.js';
 
 // Hash routing: "#parcours" shows one page, "#projets/rugtraak" a project detail page, "#parcours/auxiga" an experience one.
 // Pages are reached from the home menu and left with Retour, Escape or the browser history.
@@ -34,6 +35,10 @@ const DETAILS = {
   parcours: { prefix: 'exp', list: document.getElementById('parcours-liste') },
 };
 
+// Depth of a page: home 0, the three menu pages 1, every detail page 2. Moving between a list and one of its details
+// runs the tunnel, forward when going deeper; every other move keeps the fade.
+const depthOf = (route) => (route.view === HOME ? 0 : route.detail ? 2 : 1);
+
 const views = document.querySelectorAll('main > section');
 const detailPages = document.querySelectorAll('.detail-page');
 const backHome = document.getElementById('back-home');
@@ -41,6 +46,8 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 let current = readRoute();
 let timeline = null;
+let pendingOrigin = null; // viewport point of the click that leads into a detail page
+let lastOrigin = null; // origin of the last forward tunnel, where the way back returns to
 
 function readRoute() {
   const [view, detail] = window.location.hash.replace(/^#/, '').split('/');
@@ -74,15 +81,47 @@ function apply(route) {
   return detail;
 }
 
-// Every hash change fades the page out, swaps it and fades the new one in.
+const viewportCentre = () => ({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+
+// The page a route shows inside its section: the list, or the detail page that replaces it.
+function pageOf(route) {
+  return detailOf(route) || DETAILS[route.view].list;
+}
+
+// A move between a list and one of its own detail pages, in either direction.
+function isTunnelMove(from, to) {
+  return from.view === to.view && DETAILS[to.view] && Math.abs(depthOf(from) - depthOf(to)) === 1;
+}
+
+// Every hash change fades the page out, swaps it and fades the new one in, or goes through the tunnel.
 function navigate(route) {
+  const previous = current;
   current = route;
-  // A transition cut short leaves whichever section was on screen as the one that goes out.
+  // A tunnel or a fade cut short ends in its end state, so the DOM always starts from a page at rest.
+  finishTunnel();
   timeline?.kill();
   timeline = null;
   gsap.set(views, { clearProps: 'opacity' });
+  const origin = pendingOrigin;
+  pendingOrigin = null;
+  const tunnel = isTunnelMove(previous, route);
 
-  if (reducedMotion.matches) {
+  if (tunnel && !reducedMotion.matches) {
+    const forward = depthOf(route) > depthOf(previous);
+    if (forward) lastOrigin = origin || viewportCentre();
+    const detail = detailOf(forward ? route : previous);
+    runTunnel({
+      direction: forward ? 1 : -1,
+      outgoing: pageOf(previous),
+      incoming: pageOf(route),
+      origin: forward ? lastOrigin : lastOrigin || viewportCentre(),
+      theme: forward ? THEMES[detail.id] : undefined,
+      swap: () => apply(route),
+    });
+    return;
+  }
+  // Reduced motion: no movement; a list and its detail still crossfade, every other move is immediate.
+  if (reducedMotion.matches && !tunnel) {
     apply(route);
     return;
   }
@@ -108,6 +147,16 @@ function onKeyDown(event) {
   if (current.detail) window.location.hash = current.view;
   else if (current.view !== HOME) window.location.hash = HOME;
 }
+
+// The tunnel into an experience starts from the middle of the link that was clicked (or activated from the keyboard).
+document.querySelectorAll('a.exp-link').forEach((link) => {
+  link.addEventListener('click', () => {
+    const box = link.getBoundingClientRect();
+    pendingOrigin = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  });
+});
+// Project bubbles send the point they were clicked at, just before they change the hash.
+window.addEventListener('tunnel:origin', ({ detail }) => { pendingOrigin = { x: detail.x, y: detail.y }; });
 
 document.querySelectorAll('.detail-page .back').forEach((button) => {
   button.addEventListener('click', () => { window.location.hash = button.closest('main > section').id; });

@@ -246,6 +246,9 @@ function openProject({ slug, name, radius }, x, y) {
   window.setTimeout(() => burst(x, y), 260);
   window.setTimeout(() => {
     opening = false;
+    // The tunnel into the project opens from where the bubble was, in viewport coordinates.
+    const box = stage.getBoundingClientRect();
+    window.dispatchEvent(new CustomEvent('tunnel:origin', { detail: { x: box.left + x, y: box.top + y } }));
     window.location.hash = `projets/${slug}`;
     pop.remove();
   }, 580);
