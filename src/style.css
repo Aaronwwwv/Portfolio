@@ -1,9 +1,9 @@
-/* Layout: a home menu leading to one page at a time, one reading column under the swarm's title band and over its blurred tornado of gold particles; projects float as bubbles, each detail page pairs its text with a figures ledger */
+/* Layout: a home menu leading to one page at a time, each filling the screen under the swarm's title band, over its blurred tornado of gold particles; projects float as bubbles, each detail page pairs its text, in two columns on wide screens, with a figures ledger */
 :root {
   --paper: #0a0908;
   --sheet: #141210;
   --ink: #F0E6CC;
-  --muted: #8A7E62;
+  --muted: #BDB194; /* 9.4:1 on --paper, 8.8:1 on --sheet: every text colour is at least 7:1 */
   --line: #2E2A20;
   --accent: #C9A96A;
   --accent-soft: rgba(201, 169, 106, 0.12);
@@ -17,15 +17,17 @@
   --title-band: 120px; /* reserved 24px below the top of the viewport for the swarm's page title; swarm.js reads it */
   --title-gap: 48px; /* free space between the band and the page content, so the formed title keeps clear of the text */
   --page-top: calc(24px + var(--title-band) + var(--title-gap));
+  --page-bottom: 72px;
+  --gutter: clamp(20px, 5vw, 96px); /* page margin on each side */
+  --wrap-max: 1680px; /* widest the content gets */
+  --measure: 58ch; /* longest line of running text: at most about 78 characters of Jost, whose letters are narrower than its 0 */
+  --page-min: calc(100svh - var(--page-top) - var(--page-bottom)); /* a page is at least as tall as the screen */
   color-scheme: dark;
 }
 
 /* Themes of the detail pages, set by sections.js as data-theme on <html>. The selectors are not tied to <html>, so any
    element can carry a theme. Every text colour is at least 7:1 on both
    --paper and --sheet; --accent alone may be lower, as it only colours rules, rims and focus-free decoration. */
-[data-theme="tutorat"], [data-theme="rugtraak"] {
-  --muted: #BDB194;
-}
 [data-theme="auxiga"] {
   --paper: #FFFFFF;
   --sheet: #F7F5F2;
@@ -77,8 +79,10 @@ img { max-width: 100%; }
 /* The paper sits on <html> and crossfades when the theme changes, so a light page never flashes in */
 html { background: var(--paper); transition: background-color 0.5s ease; }
 /* overflow-x: clip keeps a page scaled up by the warp from widening the document */
-body { color: var(--ink); font: 400 16px/1.6 var(--body); overflow-x: clip; }
-.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: var(--page-top) 72px; display: grid; gap: 56px; }
+body { color: var(--ink); font: 400 clamp(17px, 0.9rem + 0.35vw, 22px)/1.6 var(--body); overflow-x: clip; }
+.wrap { width: min(100% - 2 * var(--gutter), var(--wrap-max)); margin: 0 auto; padding-block: var(--page-top) var(--page-bottom); display: grid; gap: 56px; }
+main > section { min-height: var(--page-min); }
+p, li { max-width: var(--measure); }
 /* The browser also scrolls to the section named in the hash on load: as tall as the top padding, that jump stays at the very top */
 main > section { scroll-margin-top: var(--page-top); }
 /* Intro: swarm.js puts .is-intro on <html> while the swarm spells the intro words; <main> waits hidden and inert, the header stays usable, and the content fades back */
@@ -117,44 +121,50 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 .skip-intro { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 10; font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); background: none; border: 0; padding: 8px 12px; cursor: pointer; }
 .skip-intro:hover { color: var(--accent); }
 
-/* Home menu: three links, an underline that draws from the left on hover and on keyboard focus */
-.menu { display: flex; flex-wrap: wrap; gap: 16px 40px; margin-top: 12px; }
-.menu-btn { position: relative; font: 700 28px/1.2 var(--display); text-transform: uppercase; letter-spacing: 0.02em; color: var(--ink); text-decoration: none; padding-bottom: 4px; }
+/* Home menu: three links across the width at the foot of the screen, an underline that draws from the left on hover and on keyboard focus */
+/* One row: at this size the three labels are wider than the page below about 1700px, so a label breaks inside its column instead of the row wrapping */
+.menu { display: flex; flex-wrap: nowrap; justify-content: space-between; align-items: end; gap: 16px clamp(24px, 4vw, 80px); margin-top: auto; padding-top: clamp(24px, 6svh, 80px); }
+.menu-btn { position: relative; flex: 0 1 auto; text-wrap: balance; font: 700 clamp(28px, 4vw, 72px)/1.1 var(--display); text-transform: uppercase; letter-spacing: 0.02em; color: var(--ink); text-decoration: none; padding-bottom: 4px; }
 .menu-btn::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 0.25s ease; }
 .menu-btn:hover::after, .menu-btn:focus-visible::after { transform: scaleX(1); }
 
-.hero { display: grid; gap: 18px; }
-.hero h1 { font-size: clamp(38px, 7vw, 64px); line-height: 1; font-weight: 700; }
-.lede { font-size: 19px; max-width: 62ch; margin: 0; }
-.contact { display: flex; flex-wrap: wrap; gap: 8px 22px; font: 400 14px/1.5 var(--mono); color: var(--muted); }
+/* Home: the hero fills the screen, the tagline large at the top, the menu pushed to the bottom */
+#accueil { display: flex; flex-direction: column; }
+.hero { display: flex; flex-direction: column; gap: clamp(18px, 2.4svh, 32px); flex: 1; }
+.hero h1 { font-size: clamp(44px, 8vw, 120px); line-height: 1; font-weight: 700; }
+.lede { font-size: clamp(21px, 0.9rem + 1.3vw, 40px); line-height: 1.35; max-width: 40ch; margin: 0; }
+.contact { display: flex; flex-wrap: wrap; gap: 8px 28px; font: 400 clamp(14px, 0.75rem + 0.3vw, 18px)/1.5 var(--mono); color: var(--muted); }
 .contact span { user-select: all; }
-.goal { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; max-width: 70ch; color: var(--muted); margin: 0; }
+.goal { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; max-width: 54ch; color: var(--muted); margin: 0; }
 
 .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--accent); padding-bottom: 10px; }
-.section-head h2 { font-size: 26px; }
+.section-head h2 { font-size: clamp(24px, 1rem + 1.1vw, 40px); }
 /* The bubble stage heading is spelled by the swarm, so its rule would be a lone line across the page: none there */
 .section-head.is-plain { border-bottom: 0; padding-bottom: 0; }
-.meta { font: 400 13px/1.5 var(--mono); color: var(--muted); }
+.meta { font: 400 clamp(13px, 0.7rem + 0.2vw, 16px)/1.5 var(--mono); color: var(--muted); max-width: 78ch; } /* monospace: 1ch is one character */
 .note { font-size: 14px; color: var(--muted); }
 
 .entry { padding-block: 22px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
 .entry:last-child { border-bottom: 0; }
-.entry h3 { font-size: 19px; }
-.entry ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 65ch; }
+.entry h3 { font-size: clamp(19px, 0.85rem + 0.6vw, 28px); }
+.entry ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: var(--measure); }
+/* About page: the two blocks share the screen height, the experience staircase at the bottom */
+#parcours-liste { min-height: var(--page-min); align-content: space-between; }
 
-/* Experience staircase: three links stepping right then back left, each floating on its own spot; experience.js tilts them toward a fine pointer */
-.exp-stairs { list-style: none; margin: 28px 0 0; padding: 0; display: grid; grid-template-columns: 22% minmax(0, 1fr) 22%; row-gap: 22px; }
+/* Experience staircase: three links stepping right then back left, each floating on its own spot; experience.js tilts them toward a fine pointer.
+   The steps are offset by 30% of the wide container, so the stair still reads at full width */
+.exp-stairs { list-style: none; margin: 28px 0 0; padding: 0; display: grid; grid-template-columns: 30% minmax(0, 1fr) 30%; row-gap: clamp(22px, 3svh, 40px); }
 .exp-step { min-width: 0; grid-column: 1 / 3; justify-self: start; animation: exp-float 3s ease-in-out infinite alternate; }
 .exp-step:nth-child(2) { grid-column: 2 / 4; animation-duration: 2.6s; animation-delay: -1.7s; }
 .exp-step:nth-child(3) { animation-duration: 3.4s; animation-delay: -0.9s; }
 @keyframes exp-float { from { transform: translateY(-5px); } to { transform: translateY(5px); } }
-.exp-link { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; align-items: center; padding: 14px 22px 14px 14px; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; color: var(--ink); text-decoration: none; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); transition: border-color 0.2s ease, translate 0.2s ease; will-change: transform; }
+.exp-link { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 18px; align-items: center; padding: clamp(14px, 1.2vw, 22px) clamp(22px, 2vw, 36px) clamp(14px, 1.2vw, 22px) clamp(14px, 1.2vw, 22px); background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; color: var(--ink); text-decoration: none; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); transition: border-color 0.2s ease, translate 0.2s ease; will-change: transform; }
 .exp-link:hover { border-color: rgba(201, 169, 106, 0.6); }
 /* Keyboard focus: the ring plus a small fixed lift, on top of whatever tilt is applied */
 .exp-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 14px; border-color: var(--accent); translate: 0 -4px; }
 .exp-badge { grid-row: 1 / 3; width: 56px; height: 56px; border-radius: 50%; border: 1px solid rgba(201, 169, 106, 0.6); background: var(--paper); }
-.exp-title { font: 700 22px/1.2 var(--display); letter-spacing: 0.01em; }
-.exp-date { font: 400 13px/1.5 var(--mono); color: #BDB194; } /* 8.8:1 on the link background */
+.exp-title { font: 700 clamp(22px, 0.9rem + 0.9vw, 36px)/1.2 var(--display); letter-spacing: 0.01em; }
+.exp-date { font: 400 clamp(13px, 0.7rem + 0.25vw, 17px)/1.5 var(--mono); color: #BDB194; } /* 8.8:1 on the link background */
 
 /* No visible box: projects-bubbles.js draws the frame on its canvas, a travelling light and the sides the bubbles hit */
 #bubble-stage { position: relative; width: 100%; height: 80vh; min-height: 560px; margin-top: 24px; overflow: hidden; }
@@ -166,20 +176,32 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 .bubble-pop { position: absolute; display: grid; place-items: center; border: 2px solid rgba(201, 169, 106, 0.9); border-radius: 50%; background: rgba(201, 169, 106, 0.14); color: var(--ink); font: 600 15px var(--body); pointer-events: none; }
 .burst-particle { position: absolute; background: var(--accent); border-radius: 1px; pointer-events: none; }
 
-.detail-page { display: grid; gap: 28px; }
+/* A short detail page keeps its back button at the top and its article in the middle of the rest of the screen */
+.detail-page { display: grid; gap: 28px; min-height: var(--page-min); grid-template-rows: auto 1fr; }
 .detail-page > * { min-width: 0; }
 button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--accent-text); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
 button.back:hover { border-color: var(--accent); }
-.detail { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 28px; }
+.detail { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 28px; align-self: center; }
 .detail .text { min-width: 0; display: grid; gap: 12px; align-content: start; }
-.detail h2 { font-size: 30px; }
-.detail h3 { font-size: 19px; margin-top: 10px; }
-.detail p { margin: 0; max-width: 65ch; }
+.detail h2 { font-size: clamp(28px, 1.2rem + 1.6vw, 52px); }
+.detail h3 { font-size: clamp(19px, 0.85rem + 0.6vw, 28px); margin-top: 10px; }
+.detail p { margin: 0; max-width: var(--measure); }
+/* Wide screens: the text in two columns, a heading never left at the foot of a column, the ledger a wide sidebar */
+@media (min-width: 1024px) {
+  .detail { grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 440px); gap: clamp(32px, 4vw, 80px); }
+  .detail:not(:has(.ledger)) { grid-template-columns: minmax(0, 1fr); }
+  .detail .text { display: block; columns: 2; column-gap: clamp(32px, 4vw, 80px); }
+  .detail .text > * { break-inside: avoid; margin-top: 12px; }
+  .detail .text > :first-child { margin-top: 0; }
+  .detail .text > h2, .detail .text > .meta { column-span: all; }
+  .detail .text > h3 { break-after: avoid; margin-top: 26px; }
+  .detail .text > .meta + h3 { margin-top: 18px; }
+}
 .ledger { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; align-self: start; display: grid; gap: 12px; min-width: 0; }
 .ledger dl { margin: 0; display: grid; gap: 10px; }
 .ledger div { display: grid; gap: 2px; }
-.ledger dt { font-size: 13px; color: var(--muted); }
-.ledger dd { margin: 0; font: 500 20px/1.2 var(--mono); font-variant-numeric: tabular-nums; color: var(--accent-text); }
+.ledger dt { font-size: clamp(13px, 0.7rem + 0.25vw, 17px); color: var(--muted); }
+.ledger dd { margin: 0; font: 500 clamp(20px, 0.9rem + 0.7vw, 32px)/1.2 var(--mono); font-variant-numeric: tabular-nums; color: var(--accent-text); }
 .ledger dd small { font: 400 12px var(--body); color: var(--muted); margin-left: 4px; }
 
 .status { display: grid; gap: 8px; margin-top: 4px; }
@@ -191,19 +213,22 @@ button.back:hover { border-color: var(--accent); }
 
 .small-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 28px; }
 .small { padding-block: 22px; display: grid; gap: 8px; align-content: start; min-width: 0; }
-.small h3 { font-size: 19px; }
-.small p { margin: 0; font-size: 15px; }
+.small h3 { font-size: clamp(19px, 0.85rem + 0.6vw, 28px); }
+.small p { margin: 0; font-size: 0.92em; }
 
-.contact-list { margin: 0; padding-top: 22px; display: grid; gap: 16px; }
-.contact-list div { display: grid; gap: 2px; }
-.contact-list dd { margin: 0; font: 400 15px/1.5 var(--mono); overflow-wrap: anywhere; }
+/* Contact: four large items in a 2 x 2 grid that takes the rest of the screen */
+#contact { display: flex; flex-direction: column; }
+.contact-list { margin: 0; padding-top: 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: space-evenly; gap: clamp(28px, 5svh, 72px) clamp(28px, 4vw, 80px); flex: 1; }
+.contact-list div { display: grid; gap: 6px; align-content: start; }
+.contact-list dd { margin: 0; font: 400 clamp(18px, 0.8rem + 1.2vw, 38px)/1.3 var(--mono); overflow-wrap: anywhere; }
 .contact-list dd span { user-select: all; }
 
 @media (max-width: 760px) {
+  :root { --page-bottom: 56px; }
   .detail { grid-template-columns: minmax(0, 1fr); }
   .small-grid { grid-template-columns: minmax(0, 1fr); }
   .wrap, .stack { gap: 40px; }
-  .wrap { padding-block: var(--page-top) 56px; }
+  .contact-list { grid-template-columns: minmax(0, 1fr); align-content: start; }
 }
 
 /* Narrow screens: swarm.js starts the title below the Retour link and gives it the full width, so the band holds one
