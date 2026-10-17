@@ -6,9 +6,13 @@ const PARTICLES = 1500; // desktop budget
 const SMALL_SCREEN = 760; // px, below this width the small budget applies (decided once, at load)
 const SMALL_PARTICLES = 400;
 const BACKGROUND_SHARE = 0.35; // share of the particles still drawn in background mode
-const INTRO_WORDS = ['AARON', 'PORTFOLIO'];
-const INTRO_HOLD_MS = 2000;
-const INTRO_SWARM_MS = 900; // free swarming before each intro word
+const INTRO_WORDS = ['AARON', 'PORTFOLIO']; // the second word forms straight from the first, with no swarm phase between
+const INTRO_SWARM_MS = 500; // free swarming before the first intro word
+const INTRO_HOLD_MS = 1500; // each intro word, once formed
+const INTRO_SPREAD = 0.9; // s between the first and the last particle's start in an intro move, whatever the particle count
+const INTRO_DURATION_MIN = 0.9; // s, each particle's move during the intro
+const INTRO_DURATION_MAX = 1.3;
+const INTRO_SKIP_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchmove']; // a click, a key or a scroll gesture ends the intro
 const TITLE_HOLD_MS = 1500;
 const INTRO_CLASS = 'is-intro'; // on <html> while the intro runs: style.css hides <main> so the words never cross body text
 const INTRO_FALLBACK_MS = 500; // the class goes at the latest this long after the intro should have ended
@@ -152,10 +156,13 @@ function release(next) {
   setState(next);
 }
 
-// Longest the intro timeline can take, in seconds, before the font wait.
-function introLength(count) {
-  const move = (count - 1) * STAGGER + DURATION_MAX;
-  return INTRO_WORDS.length * (INTRO_SWARM_MS / 1000 + move + INTRO_HOLD_MS / 1000) + move;
+// Move timings: page titles stagger by a fixed step, the intro spreads its starts over a fixed time.
+const TITLE_TIMING = { stagger: () => STAGGER, min: DURATION_MIN, max: DURATION_MAX };
+const INTRO_TIMING = { stagger: (count) => INTRO_SPREAD / Math.max(1, count - 1), min: INTRO_DURATION_MIN, max: INTRO_DURATION_MAX };
+
+// Longest the intro can take, in seconds, before the font wait: the content comes back when the dispersal starts.
+function introLength() {
+  return INTRO_SWARM_MS / 1000 + INTRO_WORDS.length * (INTRO_SPREAD + INTRO_DURATION_MAX + INTRO_HOLD_MS / 1000);
 }
 
 // Safety net for a timeline that never reaches its end (tab hidden, timeline lost): the content comes back anyway.
@@ -168,6 +175,17 @@ function endIntro() {
   window.clearTimeout(introTimer);
   introTimeline = null;
   document.documentElement.classList.remove(INTRO_CLASS);
+  INTRO_SKIP_EVENTS.forEach((type) => window.removeEventListener(type, skipIntro, true));
+}
+
+// Skip: the content comes back at once and the swarm disperses to the background, even if the font is still loading.
+function skipIntro() {
+  requests += 1; // a playIntro still waiting for the font gives up
+  endIntro();
+  stop();
+  const tl = gsap.timeline();
+  addDisperse(tl, 0, INTRO_TIMING);
+  timeline = tl;
 }
 
 function stop() {
@@ -183,24 +201,25 @@ function claim() {
   this.targets()[0].free = false;
 }
 
-// One tween per particle, starting STAGGER apart. Returns the time the last particle lands.
-function addMoves(tl, start, place) {
+// One tween per particle, starts staggered by the timing. Returns the time the last particle lands.
+function addMoves(tl, start, place, timing) {
+  const stagger = timing.stagger(particles.length);
   let end = start;
   particles.forEach((particle, index) => {
-    const duration = random(DURATION_MIN, DURATION_MAX);
-    const at = start + index * STAGGER;
+    const duration = random(timing.min, timing.max);
+    const at = start + index * stagger;
     tl.to(particle, { ...place(index), duration, ease: EASE, onStart: claim }, at);
     end = Math.max(end, at + duration);
   });
   return end;
 }
 
-function addForm(tl, start, points) {
+function addForm(tl, start, points, timing = TITLE_TIMING) {
   tl.call(setState, ['forming'], start);
   const end = addMoves(tl, start, (index) => {
     const point = points[index % points.length];
     return { x: point.x, y: point.y, a: FORMED_ALPHA };
-  });
+  }, timing);
   tl.call(setState, ['formed'], end);
   return end;
 }
@@ -211,14 +230,14 @@ function addSwarm(tl, start) {
   return start + INTRO_SWARM_MS / 1000;
 }
 
-function addDisperse(tl, start) {
+function addDisperse(tl, start, timing = TITLE_TIMING) {
   const visible = Math.round(particles.length * BACKGROUND_SHARE);
   tl.call(() => { shown = null; setState('dispersing'); }, null, start);
   const end = addMoves(tl, start, (index) => ({
     x: random(0, width),
     y: random(0, height),
     a: index < visible ? BACKGROUND_ALPHA : 0,
-  }));
+  }), timing);
   tl.call(release, ['background'], end);
   return end;
 }
@@ -264,16 +283,17 @@ async function playIntro() {
   }
   stop();
   const tl = gsap.timeline();
-  let at = 0;
+  let at = addSwarm(tl, 0);
   INTRO_WORDS.forEach((word) => {
-    at = addSwarm(tl, at);
     const points = sampleText(word, zoneBox('center'));
-    if (points.length) at = addForm(tl, at, points) + INTRO_HOLD_MS / 1000;
+    if (points.length) at = addForm(tl, at, points, INTRO_TIMING) + INTRO_HOLD_MS / 1000;
   });
-  tl.call(endIntro, null, addDisperse(tl, at));
+  // The content fades back as the dispersal starts.
+  tl.call(endIntro, null, at);
+  addDisperse(tl, at, INTRO_TIMING);
   timeline = tl;
   introTimeline = tl;
-  armIntroFallback(tl.duration());
+  armIntroFallback(at);
 }
 
 function tick(time, deltaTime) {
@@ -387,6 +407,7 @@ export function initSwarm() {
     else start();
   });
   document.documentElement.classList.add(INTRO_CLASS);
-  armIntroFallback(introLength(particles.length));
+  INTRO_SKIP_EVENTS.forEach((type) => window.addEventListener(type, skipIntro, { capture: true, passive: true }));
+  armIntroFallback(introLength());
   playIntro();
 }
