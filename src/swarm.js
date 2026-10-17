@@ -2,7 +2,7 @@ import gsap from 'gsap';
 import { createNoise3D } from 'simplex-noise';
 
 // Particle swarm behind the page: it drifts on a flow field, spells the intro words and each page title, then settles as a faint blurred background.
-const PARTICLES = 1000; // desktop budget
+const PARTICLES = 1500; // desktop budget
 const SMALL_SCREEN = 760; // px, below this width the small budget applies (decided once, at load)
 const SMALL_PARTICLES = 400;
 const BACKGROUND_SHARE = 0.35; // share of the particles still drawn in background mode
@@ -16,9 +16,9 @@ const FONT_LOAD = '700 120px "Big Shoulders Stencil Display"';
 const FONT_FAMILY = '"Big Shoulders Stencil Display", Impact, sans-serif';
 const TEXT_WIDTH = 0.7; // share of the viewport width the text may take
 const INTRO_HEIGHT = 0.4; // share of the viewport height for the intro words, centred
-const BAND_TOP = 96; // px, top edge of the title band, below the 56 px header
-const BAND_HEIGHT = 0.18; // share of the viewport height, maximum height of the title band
-const SAMPLE_STEP = 3; // px between sampled grid points, refined down to 1 if the text yields too few
+const BAND_OFFSET = 12; // px between the header and the top of the title band; the band height is --title-band in style.css
+const TEXT_FIT = 0.8; // share of the band height the title letters may take, centred in the band
+const SAMPLE_REFINE = 0.9; // the grid step shrinks by this factor until the letters hold one point per particle
 const ALPHA_THRESHOLD = 128;
 const DURATION_MIN = 1.1; // s, each particle's move
 const DURATION_MAX = 1.7;
@@ -31,11 +31,12 @@ const BACKGROUND_SPEED = 0.35;
 const NOISE_SCALE = 0.0018; // flow field frequency, per px
 const NOISE_TIME = 0.06; // flow field evolution, per second
 const SWARM_ALPHA = 0.55;
-const FORMED_ALPHA = 1;
+const FORMED_ALPHA = 0.9;
 const BACKGROUND_ALPHA = 0.25;
 const TRAIL_FADE = 0.16; // alpha of the erase pass each frame; formed text clears fully instead
 const BACKGROUND_BLUR = 'blur(6px)';
-const DOT = 2; // px, side of a particle
+const DOT_RADIUS = 1; // px, half the side of a particle
+const DOT_RADIUS_FORMED = 1.4; // px, same while particles form or hold a word, for legibility
 const COLOR = '#C9A96A';
 const ERASE = '#000';
 const MAX_DPR = 2;
@@ -51,6 +52,8 @@ let context = null;
 let sampler = null;
 let width = 0; // viewport, in CSS px
 let height = 0;
+let headerHeight = 0; // px, read with the title band on each resize
+let titleBand = 0;
 let particles = [];
 let state = 'swarm';
 let timeline = null;
@@ -69,10 +72,17 @@ window.addEventListener('section:change', ({ detail }) => {
   if (canvas) setSwarmTitle(lastTitle);
 });
 
+// The band sits right under the header and is as tall as the space style.css reserves above the page content.
+function readLayout() {
+  const header = document.querySelector('.site-header');
+  headerHeight = header ? parseFloat(getComputedStyle(header).height) || 0 : 0;
+  titleBand = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--title-band')) || 0;
+}
+
 function zoneBox(zone) {
   const boxWidth = width * TEXT_WIDTH;
-  const boxHeight = zone === 'center' ? height * INTRO_HEIGHT : height * BAND_HEIGHT;
-  const top = zone === 'center' ? (height - boxHeight) / 2 : BAND_TOP;
+  const boxHeight = zone === 'center' ? height * INTRO_HEIGHT : titleBand * TEXT_FIT;
+  const top = zone === 'center' ? (height - boxHeight) / 2 : headerHeight + BAND_OFFSET + (titleBand - boxHeight) / 2;
   return { x: (width - boxWidth) / 2, y: top, width: boxWidth, height: boxHeight };
 }
 
@@ -92,7 +102,8 @@ function fitText(target, text, box) {
   };
 }
 
-// Viewport points inside the letters, shuffled; at least one per particle when the text is large enough.
+// Viewport points inside the letters on an even grid, shuffled. The step starts from the ink area so the grid holds
+// about one point per particle: the dots spread evenly over the letters instead of clumping.
 function sampleText(text, box) {
   const target = sampler.getContext('2d', { willReadFrequently: true });
   const fit = fitText(target, text, box);
@@ -106,15 +117,21 @@ function sampleText(text, box) {
   const originX = box.x + (box.width - fit.inkWidth) / 2;
   const originY = box.y + (box.height - fit.inkHeight) / 2;
 
+  let ink = 0;
+  for (let i = 3; i < data.length; i += 4) if (data[i] > ALPHA_THRESHOLD) ink += 1;
+  let step = Math.max(1, Math.sqrt(ink / particles.length));
   let points = [];
-  for (let step = SAMPLE_STEP; step >= 1; step -= 1) {
+  for (;;) {
     points = [];
-    for (let y = 0; y < fit.inkHeight; y += step) {
-      for (let x = 0; x < fit.inkWidth; x += step) {
-        if (data[(y * fit.inkWidth + x) * 4 + 3] > ALPHA_THRESHOLD) points.push({ x: originX + x, y: originY + y });
+    for (let y = step / 2; y < fit.inkHeight; y += step) {
+      const row = Math.floor(y);
+      for (let x = step / 2; x < fit.inkWidth; x += step) {
+        const column = Math.floor(x);
+        if (data[(row * fit.inkWidth + column) * 4 + 3] > ALPHA_THRESHOLD) points.push({ x: originX + column, y: originY + row });
       }
     }
-    if (points.length >= particles.length) break;
+    if (points.length >= particles.length || step === 1) break;
+    step = Math.max(1, step * SAMPLE_REFINE);
   }
   for (let i = points.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -263,6 +280,8 @@ function tick(time, deltaTime) {
   const frames = Math.min(deltaTime, 100) / (1000 / 60);
   const speed = state === 'background' ? BACKGROUND_SPEED : SWARM_SPEED;
   const breathe = state === 'formed';
+  const radius = breathe || state === 'forming' ? DOT_RADIUS_FORMED : DOT_RADIUS;
+  const side = radius * 2;
   const flowTime = time * NOISE_TIME;
 
   // Erase pass: a faint fill leaves trails behind moving particles; formed text gets a clean frame.
@@ -296,7 +315,7 @@ function tick(time, deltaTime) {
       y += particle.breathY * offset;
     }
     context.globalAlpha = particle.a;
-    context.fillRect(x - DOT / 2, y - DOT / 2, DOT, DOT);
+    context.fillRect(x - radius, y - radius, side, side);
   }
 }
 
@@ -319,6 +338,7 @@ function resize() {
   canvas.width = Math.round(width * ratio);
   canvas.height = Math.round(height * ratio);
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  readLayout();
   if (reducedMotion) drawStatic(lastTitle);
   // Formed text follows the new layout; mobile address bars only change the height, which is left alone.
   else if (widthChanged && shown && (state === 'forming' || state === 'formed')) setSwarmTitle(shown.text, shown);
