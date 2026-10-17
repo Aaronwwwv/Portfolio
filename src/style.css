@@ -132,6 +132,8 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 
 .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--accent); padding-bottom: 10px; }
 .section-head h2 { font-size: 26px; }
+/* The bubble stage heading is spelled by the swarm, so its rule would be a lone line across the page: none there */
+.section-head.is-plain { border-bottom: 0; padding-bottom: 0; }
 .meta { font: 400 13px/1.5 var(--mono); color: var(--muted); }
 .note { font-size: 14px; color: var(--muted); }
 
