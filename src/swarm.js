@@ -300,6 +300,7 @@ export function initSwarm() {
   canvas = document.createElement('canvas');
   canvas.id = 'swarm-canvas';
   canvas.setAttribute('aria-hidden', 'true');
+  canvas.style.pointerEvents = 'none';
   document.body.prepend(canvas);
   context = canvas.getContext('2d');
   sampler = document.createElement('canvas');
