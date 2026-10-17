@@ -1,25 +1,33 @@
 import gsap from 'gsap';
 import { createNoise3D } from 'simplex-noise';
 
-// Particle swarm behind the page: it drifts on a flow field, spells the intro words and each page title, then settles as a faint blurred background.
+// Particle swarm behind the page: it drifts on a flow field, spells AARON in the intro and each page title, then settles as a faint blurred background.
 const PARTICLES = 1500; // desktop budget
 const SMALL_SCREEN = 760; // px, below this width the small budget applies (decided once, at load)
 const SMALL_PARTICLES = 400;
 const BACKGROUND_SHARE = 0.35; // share of the particles still drawn in background mode
-const INTRO_WORDS = ['AARON', 'PORTFOLIO']; // the second word forms straight from the first, with no swarm phase between
-const INTRO_SWARM_MS = 500; // free swarming before the first intro word
-const INTRO_HOLD_MS = 1500; // each intro word, once formed
-const INTRO_SPREAD = 0.9; // s between the first and the last particle's start in an intro move, whatever the particle count
-const INTRO_DURATION_MIN = 0.9; // s, each particle's move during the intro
-const INTRO_DURATION_MAX = 1.3;
-const INTRO_SKIP_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchmove']; // a click, a key or a scroll gesture ends the intro
+// Intro, on a full load of the home page only: 0.2 s of free swarm, AARON formed across the screen by 1.1 s, held until
+// 1.7 s, then the content comes back and the particles regroup into the home title in the band, formed by about 2.7 s.
+const INTRO_WORD = 'AARON';
+const INTRO_HASHES = ['', '#accueil']; // any other hash on load skips the intro and forms that page's title directly
+const INTRO_SWARM_MS = 200; // free swarm before AARON
+const INTRO_FORM_MS = 900; // AARON forms within this window: INTRO_SPREAD + INTRO_DURATION_MAX
+const INTRO_HOLD_MS = 600; // AARON held before the release
+const INTRO_SPREAD = 0.3; // s between the first and the last particle's start in an intro move, whatever the particle count
+const INTRO_DURATION_MIN = 0.45; // s, each particle's move into AARON
+const INTRO_DURATION_MAX = 0.6;
+const REGROUP_DURATION_MIN = 0.55; // s, each particle's move from AARON into the band; with INTRO_SPREAD, formed 1 s after the release
+const REGROUP_DURATION_MAX = 0.7;
+const SKIP_SHOW_MS = 300; // the Passer button appears this long after the intro starts
+const SKIP_IGNORED_KEYS = ['Tab', 'Shift']; // keys that move the focus (to Passer, for one) rather than skip
 const TITLE_HOLD_MS = 1500;
-const INTRO_CLASS = 'is-intro'; // on <html> while the intro runs: style.css hides <main> so the words never cross body text
-const INTRO_FALLBACK_MS = 500; // the class goes at the latest this long after the intro should have ended
+const INTRO_CLASS = 'is-intro'; // on <html> while the intro runs: style.css hides <main> so the word never crosses body text
+const INTRO_FALLBACK_MS = 500; // the release happens at the latest this long after it should have
 const FONT_LOAD = '700 120px "Big Shoulders Stencil Display"';
 const FONT_FAMILY = '"Big Shoulders Stencil Display", Impact, sans-serif';
-const TEXT_WIDTH = 0.7; // share of the viewport width the text may take
-const INTRO_HEIGHT = 0.4; // share of the viewport height for the intro words, centred
+const TEXT_WIDTH = 0.7; // share of the viewport width a page title may take
+const INTRO_WIDTH = 0.92; // share of the viewport width for AARON
+const INTRO_HEIGHT = 0.6; // share of the viewport height AARON may take, centred
 const BAND_TOP = 24; // px from the top of the viewport to the title band; the band height is --title-band in style.css
 const SWARM_CLASS = 'swarm-on'; // on <html> while the swarm runs: style.css then hides the headings the swarm spells
 const TEXT_FIT = 0.8; // share of the band height the title letters may take, centred in the band
@@ -82,7 +90,7 @@ function readLayout() {
 }
 
 function zoneBox(zone) {
-  const boxWidth = width * TEXT_WIDTH;
+  const boxWidth = width * (zone === 'center' ? INTRO_WIDTH : TEXT_WIDTH);
   const boxHeight = zone === 'center' ? height * INTRO_HEIGHT : titleBand * TEXT_FIT;
   const top = zone === 'center' ? (height - boxHeight) / 2 : BAND_TOP + (titleBand - boxHeight) / 2;
   return { x: (width - boxWidth) / 2, y: top, width: boxWidth, height: boxHeight };
@@ -155,35 +163,53 @@ function release(next) {
 }
 
 // Move timings: page titles stagger by a fixed step, the intro spreads its starts over a fixed time.
+const introStagger = (count) => INTRO_SPREAD / Math.max(1, count - 1);
 const TITLE_TIMING = { stagger: () => STAGGER, min: DURATION_MIN, max: DURATION_MAX };
-const INTRO_TIMING = { stagger: (count) => INTRO_SPREAD / Math.max(1, count - 1), min: INTRO_DURATION_MIN, max: INTRO_DURATION_MAX };
+const INTRO_TIMING = { stagger: introStagger, min: INTRO_DURATION_MIN, max: INTRO_DURATION_MAX };
+const REGROUP_TIMING = { stagger: introStagger, min: REGROUP_DURATION_MIN, max: REGROUP_DURATION_MAX };
+const INTRO_RELEASE = (INTRO_SWARM_MS + INTRO_FORM_MS + INTRO_HOLD_MS) / 1000; // s into the intro timeline
 
-// Longest the intro can take, in seconds, before the font wait: the content comes back when the dispersal starts.
-function introLength() {
-  return INTRO_SWARM_MS / 1000 + INTRO_WORDS.length * (INTRO_SPREAD + INTRO_DURATION_MAX + INTRO_HOLD_MS / 1000);
-}
+let introActive = false;
+let skipTimer = 0;
+const skipButton = document.getElementById('skip-intro');
 
-// Safety net for a timeline that never reaches its end (tab hidden, timeline lost): the content comes back anyway.
+// Safety net for a timeline that never reaches the release (tab hidden, timeline lost): the content comes back anyway.
 function armIntroFallback(seconds) {
   window.clearTimeout(introTimer);
-  introTimer = window.setTimeout(endIntro, seconds * 1000 + INTRO_FALLBACK_MS);
+  introTimer = window.setTimeout(releaseIntro, seconds * 1000 + INTRO_FALLBACK_MS);
+}
+
+function onSkipKey(event) {
+  if (!SKIP_IGNORED_KEYS.includes(event.key)) releaseIntro();
+}
+
+function beginIntro() {
+  introActive = true;
+  document.documentElement.classList.add(INTRO_CLASS);
+  skipTimer = window.setTimeout(() => { if (skipButton) skipButton.hidden = false; }, SKIP_SHOW_MS);
+  window.addEventListener('pointerdown', releaseIntro, true);
+  window.addEventListener('keydown', onSkipKey, true);
+  skipButton?.addEventListener('click', releaseIntro);
+  armIntroFallback(INTRO_RELEASE);
 }
 
 function endIntro() {
+  introActive = false;
   window.clearTimeout(introTimer);
+  window.clearTimeout(skipTimer);
   introTimeline = null;
   document.documentElement.classList.remove(INTRO_CLASS);
-  INTRO_SKIP_EVENTS.forEach((type) => window.removeEventListener(type, skipIntro, true));
+  if (skipButton) skipButton.hidden = true;
+  window.removeEventListener('pointerdown', releaseIntro, true);
+  window.removeEventListener('keydown', onSkipKey, true);
+  skipButton?.removeEventListener('click', releaseIntro);
 }
 
-// Skip: the content comes back at once and the swarm disperses to the background, even if the font is still loading.
-function skipIntro() {
-  requests += 1; // a playIntro still waiting for the font gives up
+// The 1.7 s step, also reached at once by a skip: the content comes back and the particles regroup into the page title.
+function releaseIntro() {
+  if (!introActive) return;
   endIntro();
-  stop();
-  const tl = gsap.timeline();
-  addDisperse(tl, 0, INTRO_TIMING);
-  timeline = tl;
+  setSwarmTitle(lastTitle, { timing: REGROUP_TIMING }); // also makes a playIntro still waiting for the font give up
 }
 
 function stop() {
@@ -222,12 +248,6 @@ function addForm(tl, start, points, timing = TITLE_TIMING) {
   return end;
 }
 
-function addSwarm(tl, start) {
-  tl.call(release, ['swarm'], start);
-  tl.to(particles, { a: SWARM_ALPHA, duration: 0.4 }, start);
-  return start + INTRO_SWARM_MS / 1000;
-}
-
 function addDisperse(tl, start, timing = TITLE_TIMING) {
   const visible = Math.round(particles.length * BACKGROUND_SHARE);
   tl.call(() => { shown = null; setState('dispersing'); }, null, start);
@@ -240,33 +260,17 @@ function addDisperse(tl, start, timing = TITLE_TIMING) {
   return end;
 }
 
-// Reduced motion: the title as plain text in the band, drawn once.
-function drawStatic(text) {
-  context.clearRect(0, 0, width, height);
-  if (!text) return;
-  const box = zoneBox('band');
-  const fit = fitText(context, text, box);
-  context.font = fit.font;
-  context.fillStyle = COLOR;
-  context.globalAlpha = 1;
-  context.fillText(text, box.x + (box.width - fit.inkWidth) / 2 + fit.left, box.y + (box.height - fit.inkHeight) / 2 + fit.ascent);
-}
-
-export async function setSwarmTitle(text, { zone = 'band', hold = TITLE_HOLD_MS } = {}) {
+export async function setSwarmTitle(text, { zone = 'band', hold = TITLE_HOLD_MS, timing = TITLE_TIMING } = {}) {
   const request = ++requests;
   await fontReady;
   if (request !== requests || !canvas) return;
-  if (reducedMotion) {
-    drawStatic(text);
-    return;
-  }
   stop();
-  const points = sampleText(text, zoneBox(zone));
+  const points = text ? sampleText(text, zoneBox(zone)) : [];
   const tl = gsap.timeline();
   let at = 0;
   if (points.length) {
     shown = { text, zone, hold };
-    at = addForm(tl, at, points) + hold / 1000;
+    at = addForm(tl, at, points, timing) + hold / 1000;
   }
   addDisperse(tl, at);
   timeline = tl;
@@ -281,17 +285,12 @@ async function playIntro() {
   }
   stop();
   const tl = gsap.timeline();
-  let at = addSwarm(tl, 0);
-  INTRO_WORDS.forEach((word) => {
-    const points = sampleText(word, zoneBox('center'));
-    if (points.length) at = addForm(tl, at, points, INTRO_TIMING) + INTRO_HOLD_MS / 1000;
-  });
-  // The content fades back as the dispersal starts.
-  tl.call(endIntro, null, at);
-  addDisperse(tl, at, INTRO_TIMING);
+  tl.call(release, ['swarm'], 0);
+  const points = sampleText(INTRO_WORD, zoneBox('center'));
+  if (points.length) addForm(tl, INTRO_SWARM_MS / 1000, points, INTRO_TIMING);
+  tl.call(releaseIntro, null, INTRO_RELEASE);
   timeline = tl;
   introTimeline = tl;
-  armIntroFallback(at);
 }
 
 function tick(time, deltaTime) {
@@ -357,13 +356,13 @@ function resize() {
   canvas.height = Math.round(height * ratio);
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
   readLayout();
-  if (reducedMotion) drawStatic(lastTitle);
   // Formed text follows the new layout; mobile address bars only change the height, which is left alone.
-  else if (widthChanged && shown && (state === 'forming' || state === 'formed')) setSwarmTitle(shown.text, shown);
+  if (widthChanged && shown && (state === 'forming' || state === 'formed')) setSwarmTitle(shown.text, shown);
 }
 
+// Reduced motion: no swarm at all, the page stays static with its headings visible.
 export function initSwarm() {
-  if (canvas) return;
+  if (canvas || reducedMotion) return;
   canvas = document.createElement('canvas');
   canvas.id = 'swarm-canvas';
   canvas.setAttribute('aria-hidden', 'true');
@@ -394,10 +393,6 @@ export function initSwarm() {
     resizeTimer = window.setTimeout(resize, RESIZE_DELAY);
   });
 
-  if (reducedMotion) {
-    setSwarmTitle(lastTitle);
-    return;
-  }
   document.documentElement.classList.add(SWARM_CLASS);
   setState('swarm');
   start();
@@ -405,8 +400,10 @@ export function initSwarm() {
     if (document.hidden) pause();
     else start();
   });
-  document.documentElement.classList.add(INTRO_CLASS);
-  INTRO_SKIP_EVENTS.forEach((type) => window.addEventListener(type, skipIntro, { capture: true, passive: true }));
-  armIntroFallback(introLength());
-  playIntro();
+  if (INTRO_HASHES.includes(window.location.hash)) {
+    beginIntro();
+    playIntro();
+  } else {
+    setSwarmTitle(lastTitle);
+  }
 }

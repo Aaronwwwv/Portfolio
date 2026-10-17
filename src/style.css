@@ -44,6 +44,9 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 /* Way back to the home menu, shown by sections.js on the three pages it leads to */
 #back-home { position: fixed; top: 16px; left: 16px; z-index: 10; font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); text-decoration: none; padding: 4px 6px; }
 #back-home:hover { color: var(--accent); }
+/* Skip button of the intro, shown by swarm.js from 0.3 s until the intro ends */
+.skip-intro { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 10; font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); background: none; border: 0; padding: 8px 12px; cursor: pointer; }
+.skip-intro:hover { color: var(--accent); }
 
 /* Home menu: three links, an underline that draws from the left on hover and on keyboard focus */
 .menu { display: flex; flex-wrap: wrap; gap: 16px 40px; margin-top: 12px; }
