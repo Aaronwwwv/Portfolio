@@ -1,6 +1,6 @@
 import gsap from 'gsap';
 import { lenis } from './scroll.js';
-import { runTunnel, finishTunnel } from './tunnel.js';
+import { runWarp, finishTransition } from './warp.js';
 
 // Hash routing: "#parcours" shows one page, "#projets/rugtraak" a project detail page, "#parcours/auxiga" an experience one.
 // Pages are reached from the home menu and left with Retour, Escape or the browser history.
@@ -37,7 +37,7 @@ const DETAILS = {
 };
 
 // Depth of a page: home 0, the three menu pages 1, every detail page 2. Moving between a list and one of its details
-// runs the tunnel, forward when going deeper; every other move keeps the fade.
+// runs the warp, forward when going deeper; every other move keeps the fade.
 const depthOf = (route) => (route.view === HOME ? 0 : route.detail ? 2 : 1);
 
 const views = document.querySelectorAll('main > section');
@@ -48,7 +48,7 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 let current = readRoute();
 let timeline = null;
 let pendingOrigin = null; // viewport point of the click that leads into a detail page
-let lastOrigin = null; // origin of the last forward tunnel, where the way back returns to
+let lastOrigin = null; // origin of the last forward warp, where the way back returns to
 
 function readRoute() {
   const [view, detail] = window.location.hash.replace(/^#/, '').split('/');
@@ -90,39 +90,37 @@ function pageOf(route) {
 }
 
 // A move between a list and one of its own detail pages, in either direction.
-function isTunnelMove(from, to) {
+function isWarpMove(from, to) {
   return from.view === to.view && DETAILS[to.view] && Math.abs(depthOf(from) - depthOf(to)) === 1;
 }
 
-// Every hash change fades the page out, swaps it and fades the new one in, or goes through the tunnel.
+// Every hash change fades the page out, swaps it and fades the new one in, or goes through the warp.
 function navigate(route) {
   const previous = current;
   current = route;
-  // A tunnel or a fade cut short ends in its end state, so the DOM always starts from a page at rest.
-  finishTunnel();
+  // A warp or a fade cut short ends in its end state, so the DOM always starts from a page at rest.
+  finishTransition();
   timeline?.kill();
   timeline = null;
   gsap.set(views, { clearProps: 'opacity' });
   const origin = pendingOrigin;
   pendingOrigin = null;
-  const tunnel = isTunnelMove(previous, route);
+  const warp = isWarpMove(previous, route);
 
-  if (tunnel && !reducedMotion.matches) {
+  if (warp && !reducedMotion.matches) {
     const forward = depthOf(route) > depthOf(previous);
     if (forward) lastOrigin = origin || viewportCentre();
-    const detail = detailOf(forward ? route : previous);
-    runTunnel({
+    runWarp({
       direction: forward ? 1 : -1,
       outgoing: pageOf(previous),
       incoming: pageOf(route),
       origin: forward ? lastOrigin : lastOrigin || viewportCentre(),
-      theme: forward ? THEMES[detail.id] : undefined,
       swap: () => apply(route),
     });
     return;
   }
   // Reduced motion: no movement; a list and its detail still crossfade, every other move is immediate.
-  if (reducedMotion.matches && !tunnel) {
+  if (reducedMotion.matches && !warp) {
     apply(route);
     return;
   }
@@ -149,7 +147,7 @@ function onKeyDown(event) {
   else if (current.view !== HOME) window.location.hash = HOME;
 }
 
-// The tunnel into an experience starts from the middle of the link that was clicked (or activated from the keyboard).
+// The warp into an experience starts from the middle of the link that was clicked (or activated from the keyboard).
 document.querySelectorAll('a.exp-link').forEach((link) => {
   link.addEventListener('click', () => {
     const box = link.getBoundingClientRect();

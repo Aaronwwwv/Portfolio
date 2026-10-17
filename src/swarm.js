@@ -80,6 +80,26 @@ const COLOR = '#C9A96A'; // until the page's --swarm-color is read
 const ERASE = '#000';
 const MAX_DPR = 2;
 const RESIZE_DELAY = 200; // ms
+// Warp between a list and a detail page: the particles become stars streaming away from the point that was clicked
+// (forward) or toward it (back), speed peaking at WARP_PEAK of the way, then shrinking back to points.
+export const WARP_FORWARD_MS = 1100;
+export const WARP_BACK_MS = 900;
+const WARP_PEAK = 0.55; // share of the warp where the stars are fastest
+const WARP_SPEED = 0.026; // peak speed of a near star, as a share of the viewport diagonal per frame at 60 fps
+const WARP_STREAK_MAX = 140; // px, longest streak, desktop
+const WARP_STREAK_SMALL = 70; // px, same on small screens
+const WARP_SPEED_MIN = 0.7; // each star's own speed factor, fixed for the session
+const WARP_SPEED_MAX = 1.3;
+// Depth bands, far to near: share of the stars, speed, streak length, alpha and line width.
+const WARP_BAND_SHARE = [0.5, 0.3, 0.2];
+const WARP_BAND_SPEED = [0.35, 0.7, 1.2];
+const WARP_BAND_LENGTH = [0.3, 0.6, 1];
+const WARP_BAND_ALPHA = [0.3, 0.55, 0.9];
+const WARP_BAND_WIDTH = [1, 1.3, 1.6];
+const WARP_FADE_IN = 0.08; // share of the warp over which the stars brighten from the page's own particles
+const WARP_RESPAWN_R = 40; // px, a forward star leaving the viewport comes back within this of the origin
+const WARP_ARRIVE_R = 24; // px, an inbound star this close to the origin comes back at the rim
+const WARP_CLASS = 'is-warp'; // on the canvas during a warp: style.css drops the background blur in 0.3 s
 
 const TAU = Math.PI * 2;
 const random = (min, max) => min + Math.random() * (max - min);
@@ -107,13 +127,20 @@ let color = COLOR; // --swarm-color of the page shown, read once per page change
 let shown = null; // { text, zone } currently formed or forming, for a re-layout on resize
 let introTimeline = null;
 let introTimer = 0;
+// Warp: origin, direction, progress 0..1 driven by a tween, and per star its speed factor and depth band.
+const warp = { tween: null, p: 0, x: 0, y: 0, inward: false, onEnd: null, pendingTitle: null, streak: WARP_STREAK_MAX };
+let warpSpeed = null; // Float32Array, one per particle
+let warpBand = null; // Uint8Array, one per particle
 
 // Recorded before initSwarm too: the first title, sent while the page loads, must not be animated over the intro.
+// During a warp the new page's colour is taken at once and its title waits for the warp to end.
 window.addEventListener('section:change', ({ detail }) => {
   color = getComputedStyle(document.documentElement).getPropertyValue('--swarm-color').trim() || COLOR;
   if (detail.title === lastTitle) return;
   lastTitle = detail.title;
-  if (canvas) setSwarmTitle(lastTitle);
+  if (!canvas) return;
+  if (warp.tween) warp.pendingTitle = lastTitle;
+  else setSwarmTitle(lastTitle);
 });
 
 const titleFont = (size) => `${TITLE_WEIGHT} ${size}px ${fontFamily}`;
@@ -217,8 +244,8 @@ function sampleText(lines, box) {
 function setState(next) {
   state = next;
   canvas.dataset.state = next;
-  // Set once per change; the CSS transition eases it in and out.
-  canvas.style.filter = next === 'dispersing' || next === 'background' ? BACKGROUND_BLUR : 'none';
+  // Set once per change; the CSS transition eases it in and out. During a warp the class on the canvas wins.
+  if (next !== 'warp') canvas.style.filter = next === 'dispersing' || next === 'background' ? BACKGROUND_BLUR : 'none';
 }
 
 function release(next) {
@@ -324,6 +351,10 @@ export async function setSwarmTitle(text, { zone = 'band', hold = TITLE_HOLD_MS,
   const request = ++requests;
   await loadTitleFont();
   if (request !== requests || !canvas) return;
+  if (warp.tween) {
+    warp.pendingTitle = text;
+    return;
+  }
   stop();
   readLayout(); // the band height may change with the page
   const points = text ? sampleText(titleLines(text), zoneBox(zone)) : [];
@@ -354,6 +385,119 @@ async function playIntro() {
   introTimeline = tl;
 }
 
+// Speed of the stars over the warp: accelerating up to the peak, then decelerating to a standstill at the end.
+function warpEnvelope(p) {
+  if (p < WARP_PEAK) {
+    const k = p / WARP_PEAK;
+    return k * k;
+  }
+  const k = (p - WARP_PEAK) / (1 - WARP_PEAK);
+  return 1 - k * k;
+}
+
+// Starts the warp from (x, y): direction 1 streams the stars outward, -1 inward. onEnd runs once it has settled.
+export function startWarp(x, y, direction, onEnd) {
+  if (!canvas) {
+    onEnd?.();
+    return;
+  }
+  finishWarp();
+  stop();
+  warp.x = x;
+  warp.y = y;
+  warp.inward = direction < 0;
+  warp.onEnd = onEnd || null;
+  warp.pendingTitle = null;
+  warp.p = 0;
+  canvas.classList.add(WARP_CLASS);
+  setState('warp');
+  warp.tween = gsap.to(warp, {
+    p: 1,
+    duration: (warp.inward ? WARP_BACK_MS : WARP_FORWARD_MS) / 1000,
+    ease: 'none',
+    onComplete: endWarp,
+  });
+}
+
+// Jumps a running warp to its settled end.
+export function finishWarp() {
+  if (warp.tween) warp.tween.progress(1);
+}
+
+export function warpRunning() {
+  return warp.tween !== null;
+}
+
+// The stars are points again: they become the page's particles, which form its title or settle into the background.
+function endWarp() {
+  warp.tween = null;
+  canvas.classList.remove(WARP_CLASS);
+  particles.forEach((particle) => { particle.a = BACKGROUND_ALPHA; });
+  release('dispersing');
+  const { onEnd, pendingTitle } = warp;
+  warp.onEnd = null;
+  warp.pendingTitle = null;
+  if (pendingTitle) setSwarmTitle(pendingTitle);
+  else {
+    const tl = gsap.timeline();
+    addDisperse(tl, 0);
+    timeline = tl;
+  }
+  onEnd?.();
+}
+
+// One frame of the warp: every star moves along the line from the origin, and the streaks are stroked per depth band,
+// three paths in all.
+function warpFrame(frames) {
+  const speedEnvelope = warpEnvelope(warp.p);
+  const diagonal = Math.hypot(width, height);
+  const fadeIn = Math.min(1, warp.p / WARP_FADE_IN);
+  const sign = warp.inward ? -1 : 1;
+  context.clearRect(0, 0, width, height);
+  context.strokeStyle = color;
+  context.lineCap = 'round';
+  for (let band = 0; band < 3; band += 1) {
+    const speed = WARP_SPEED * diagonal * WARP_BAND_SPEED[band] * speedEnvelope;
+    const length = warp.streak * WARP_BAND_LENGTH[band] * speedEnvelope;
+    context.globalAlpha = WARP_BAND_ALPHA[band] * fadeIn;
+    context.lineWidth = WARP_BAND_WIDTH[band];
+    context.beginPath();
+    for (let index = 0; index < particles.length; index += 1) {
+      if (warpBand[index] !== band) continue;
+      const particle = particles[index];
+      let dx = particle.x - warp.x;
+      let dy = particle.y - warp.y;
+      let distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance < 0.5) {
+        dx = particle.breathX;
+        dy = particle.breathY;
+        distance = 1;
+      }
+      const ux = dx / distance;
+      const uy = dy / distance;
+      const step = speed * warpSpeed[index] * frames;
+      particle.x += ux * step * sign;
+      particle.y += uy * step * sign;
+      if (!warp.inward && (particle.x < 0 || particle.x > width || particle.y < 0 || particle.y > height)) {
+        // Out of view: reborn close to the origin, along its own fixed direction.
+        const radius = Math.random() * WARP_RESPAWN_R;
+        particle.x = warp.x + particle.breathX * radius;
+        particle.y = warp.y + particle.breathY * radius;
+      } else if (warp.inward && distance < WARP_ARRIVE_R) {
+        // Arrived: reborn on the far side of the viewport from the origin, along its own direction.
+        const reach = Math.max(warp.x, width - warp.x, warp.y, height - warp.y);
+        particle.x = Math.min(width, Math.max(0, warp.x + particle.breathX * reach));
+        particle.y = Math.min(height, Math.max(0, warp.y + particle.breathY * reach));
+      }
+      // The streak trails behind the star: toward the origin going out, away from it coming in.
+      const trail = length * warpSpeed[index];
+      context.moveTo(particle.x - ux * trail * sign, particle.y - uy * trail * sign);
+      context.lineTo(particle.x, particle.y);
+    }
+    context.stroke();
+  }
+}
+
 // Three sines of unrelated frequencies, normalised to -1..1: the roughness of the funnel radius.
 function wobble(x) {
   return (Math.sin(x) + 0.6 * Math.sin(x * 2.3 + 1.7) + 0.35 * Math.sin(x * 4.1 + 4.2)) / 1.95;
@@ -374,6 +518,11 @@ function tick(time, deltaTime) {
   const rBottom = (TORNADO_R_BOTTOM_PCT / 100) * width;
   const swayPhase = tornadoClock * 0.35 + 1.3 * Math.sin(tornadoClock * 0.17);
   const follow = 1 - (1 - TORNADO_FOLLOW) ** frames;
+
+  if (state === 'warp') {
+    warpFrame(frames);
+    return;
+  }
 
   // Erase pass: a faint fill leaves trails behind moving particles; formed text gets a clean frame.
   if (breathe) {
@@ -481,6 +630,14 @@ export function initSwarm() {
       jitter: random(0.55, 1.1), // how far from the axis this particle orbits, relative to the funnel radius
     };
   });
+  warpSpeed = new Float32Array(count);
+  warpBand = new Uint8Array(count);
+  for (let index = 0; index < count; index += 1) {
+    warpSpeed[index] = random(WARP_SPEED_MIN, WARP_SPEED_MAX);
+    const pick = Math.random();
+    warpBand[index] = pick < WARP_BAND_SHARE[0] ? 0 : pick < WARP_BAND_SHARE[0] + WARP_BAND_SHARE[1] ? 1 : 2;
+  }
+  warp.streak = small ? WARP_STREAK_SMALL : WARP_STREAK_MAX;
 
   let resizeTimer = 0;
   window.addEventListener('resize', () => {
@@ -501,4 +658,6 @@ export function initSwarm() {
   } else {
     setSwarmTitle(lastTitle);
   }
+  // Dev server only (Vite drops this from the build): lets a test hold the stars together with the pages.
+  if (import.meta.env.DEV) window.__swarmDebug = { warp: () => warp.tween, state: () => state };
 }

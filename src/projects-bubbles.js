@@ -1,5 +1,6 @@
 import Matter from 'matter-js';
 import gsap from 'gsap';
+import { warpRunning } from './warp.js';
 
 const { Bodies, Body, Composite, Engine, Events, Mouse, MouseConstraint, Query, Render, Runner } = Matter;
 
@@ -252,7 +253,7 @@ function openProject({ slug, name, radius }, x, y) {
   window.setTimeout(() => burst(x, y), 260);
   window.setTimeout(() => {
     opening = false;
-    // The tunnel into the project opens from where the bubble was, in viewport coordinates.
+    // The warp into the project starts from where the bubble was, in viewport coordinates.
     const box = stage.getBoundingClientRect();
     window.dispatchEvent(new CustomEvent('tunnel:origin', { detail: { x: box.left + x, y: box.top + y } }));
     window.location.hash = `projets/${slug}`;
@@ -424,9 +425,12 @@ function startPhysics() {
     context.restore();
   }
 
-  function spawnBubbles(width, height) {
-    Composite.remove(engine.world, bubbles);
-    bubbles = cells(width, height).map((cell, index) => {
+  // All bubbles in their cells, or with onlyMissing just the ones a click removed, next to those still drifting.
+  function spawnBubbles(width, height, onlyMissing = false) {
+    const kept = onlyMissing ? bubbles : [];
+    if (!onlyMissing) Composite.remove(engine.world, bubbles);
+    const added = cells(width, height).map((cell, index) => {
+      if (kept.some((body) => body.plugin.data === projects[index])) return null;
       const { radius } = projects[index];
       const spreadX = Math.max(0, cell.width / 2 - radius - 12);
       const spreadY = Math.max(0, cell.height / 2 - radius - 12);
@@ -444,8 +448,9 @@ function startPhysics() {
       Body.setVelocity(body, { x: Math.cos(body.plugin.drift.angle) * speed, y: Math.sin(body.plugin.drift.angle) * speed });
       Body.setAngularVelocity(body, random(-ANGULAR_START, ANGULAR_START));
       return body;
-    });
-    Composite.add(engine.world, bubbles);
+    }).filter(Boolean);
+    bubbles = kept.concat(added);
+    Composite.add(engine.world, added);
   }
 
   function keepInside(width, height) {
@@ -504,13 +509,16 @@ function startPhysics() {
     });
   });
 
-  // Sprites per project, rebuilt when the stage is shown or resized, at the device pixel ratio of that moment.
+  // Sprites per project, built once and kept while the stage is hidden; only a new device pixel ratio rebuilds them.
   let sprites = new Map();
   let spriteBuild = 0;
+  let spriteRatio = 0;
 
   async function buildSprites() {
-    const build = ++spriteBuild;
     const ratio = window.devicePixelRatio || 1;
+    if (ratio === spriteRatio) return;
+    spriteRatio = ratio;
+    const build = ++spriteBuild;
     const [images] = await Promise.all([
       Promise.all(logoImages),
       document.fonts.load(LABEL_FONT, projects.map(({ name }) => name.toUpperCase()).join('')).catch(() => {}),
@@ -639,14 +647,34 @@ function startPhysics() {
   }).observe(stage);
   document.addEventListener('visibilitychange', sync);
 
+  // Size the walls, the frame and the bubbles were last laid out for; the stage keeps them while it is hidden.
+  let laidWidth = 0;
+  let laidHeight = 0;
+
+  function layOut(width, height) {
+    Render.setSize(render, width, height);
+    buildWalls(width, height);
+    buildFrame(width, height);
+    spawnBubbles(width, height);
+    laidWidth = width;
+    laidHeight = height;
+  }
+
   watchStage({
+    // Shown again at the same size, the stage only brings back a bubble that was clicked away. A new size rebuilds
+    // walls and bodies, but never in the middle of a warp: that waits for it to end.
     onShow(width, height) {
-      Render.setSize(render, width, height);
-      buildWalls(width, height);
-      buildFrame(width, height);
-      spawnBubbles(width, height);
-      buildSprites();
-      readStage();
+      const relayOut = () => {
+        if (width !== laidWidth || height !== laidHeight) layOut(width, height);
+        else if (bubbles.length < projects.length) spawnBubbles(width, height, true);
+        buildSprites();
+        readStage();
+      };
+      if (warpRunning() && laidWidth > 0 && (width !== laidWidth || height !== laidHeight)) {
+        window.addEventListener('warp:end', relayOut, { once: true });
+      } else {
+        relayOut();
+      }
       shown = true;
       sync();
     },
@@ -655,6 +683,8 @@ function startPhysics() {
       buildWalls(width, height);
       buildFrame(width, height);
       keepInside(width, height);
+      laidWidth = width;
+      laidHeight = height;
       buildSprites();
       readStage();
     },

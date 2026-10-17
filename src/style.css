@@ -20,8 +20,8 @@
   color-scheme: dark;
 }
 
-/* Themes of the detail pages, set by sections.js as data-theme on <html>. The selectors are not tied to <html> so that
-   tunnel.js can read a theme it has not applied yet from a probe element. Every text colour is at least 7:1 on both
+/* Themes of the detail pages, set by sections.js as data-theme on <html>. The selectors are not tied to <html>, so any
+   element can carry a theme. Every text colour is at least 7:1 on both
    --paper and --sheet; --accent alone may be lower, as it only colours rules, rims and focus-free decoration. */
 [data-theme="tutorat"], [data-theme="rugtraak"] {
   --muted: #BDB194;
@@ -76,7 +76,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 /* The paper sits on <html> and crossfades when the theme changes, so a light page never flashes in */
 html { background: var(--paper); transition: background-color 0.5s ease; }
-/* overflow-x: clip keeps a page scaled up by the tunnel from widening the document */
+/* overflow-x: clip keeps a page scaled up by the warp from widening the document */
 body { color: var(--ink); font: 400 16px/1.6 var(--body); overflow-x: clip; }
 .wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: var(--page-top) 72px; display: grid; gap: 56px; }
 /* The browser also scrolls to the section named in the hash on load: as tall as the top padding, that jump stays at the very top */
@@ -96,11 +96,10 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 
 /* Particle swarm drawn by swarm.js, which sets the blur of background mode once per state change */
 #swarm-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; transition: filter 0.8s ease; }
+/* During a warp the stars are sharp: the background blur goes in 0.3 s and comes back when the warp ends */
+#swarm-canvas.is-warp { filter: none !important; transition: filter 0.3s ease; }
 /* Background effect of a themed page, drawn by themes.js under the swarm; it fades in and out with the paper */
 #theme-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -2; opacity: 0; transition: opacity 0.5s ease; }
-/* Rings of the tunnel between a list and a detail page, drawn by tunnel.js over the content while a tunnel runs only */
-#tunnel-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; display: none; }
-#tunnel-canvas.is-running { display: block; }
 
 /* Way back to the home menu, shown by sections.js on the three pages it leads to */
 #back-home { position: fixed; top: 16px; left: 16px; z-index: 10; font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); text-decoration: none; padding: 4px 6px; }
