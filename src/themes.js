@@ -1,11 +1,13 @@
 import gsap from 'gsap';
 import { createNoise3D } from 'simplex-noise';
+import { topo } from './topo.js';
 
 // Background effects of the themed detail pages, on one fixed canvas under the swarm. Each effect is drawn only while its
 // theme is set on <html>, from the shared gsap.ticker; everything it draws is laid out on show and resize, never per frame.
 // sqkeys: a halftone grid whose dots swell and shrink with a slow noise field.
 // admp: a fan of random-walk price paths, each drawn from left to right, then faded and redrawn from the next seed.
-// rugtraak would show falling Solana tokens, but src/assets/logos has no Solana logo yet, so it has no effect for now.
+// rugtraak: contour lines of a moving relief that rises under the paint blob (topo.js), behind its glass panels.
+// An effect may set its own canvas opacity, reading-column mask and pixel ratio cap; the defaults suit the first two.
 const SMALL_SCREEN = 760; // px, below this width every count is halved (decided once, at load)
 const MAX_DPR = 2;
 const FADE_MS = 500; // canvas fade when an effect starts or stops, matching the paper crossfade
@@ -185,16 +187,20 @@ const paths = {
   },
 };
 
-const EFFECTS = { sqkeys: halftone, admp: paths };
+const EFFECTS = { sqkeys: halftone, admp: paths, rugtraak: topo };
+const opacityOf = (each) => each.opacity ?? EFFECT_OPACITY;
+const maskedOf = (each) => each.masked ?? true;
+const ratioFor = (each) => Math.min(window.devicePixelRatio || 1, each?.maxDpr ?? MAX_DPR);
+let ratio = 0; // pixel ratio the canvas was last sized at
 
 function resize() {
-  const ratio = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+  ratio = ratioFor(effect);
   width = window.innerWidth;
   height = window.innerHeight;
   canvas.width = Math.round(width * ratio);
   canvas.height = Math.round(height * ratio);
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
-  Object.values(EFFECTS).forEach((each) => each.layout());
+  Object.values(EFFECTS).forEach((each) => each.layout(width, height));
   buildMask(ratio);
 }
 
@@ -226,10 +232,12 @@ function tick(time) {
   context.clearRect(0, 0, width, height);
   context.save();
   effect.draw(time);
-  context.globalAlpha = 1;
-  context.globalCompositeOperation = 'destination-out';
-  context.setTransform(1, 0, 0, 1, 0, 0);
-  context.drawImage(mask, 0, 0);
+  if (maskedOf(effect)) {
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = 'destination-out';
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.drawImage(mask, 0, 0);
+  }
   context.restore();
 }
 
@@ -241,8 +249,9 @@ function setTheme(theme) {
   if (next) {
     if (!effect) gsap.ticker.add(tick);
     effect = next;
+    if (ratioFor(effect) !== ratio) resize(); // the contour lines draw at a lower pixel ratio
     effect.start(gsap.ticker.time);
-    canvas.style.opacity = String(EFFECT_OPACITY);
+    canvas.style.opacity = String(opacityOf(effect));
   } else {
     // The last frame fades with the canvas, then the loop lets go of it.
     canvas.style.opacity = '0';
@@ -254,15 +263,34 @@ function setTheme(theme) {
   }
 }
 
-// Reduced motion: no canvas and no effect, the themed pages keep their plain paper.
-if (!reducedMotion) {
-  canvas = document.createElement('canvas');
-  canvas.id = 'theme-canvas';
-  canvas.setAttribute('aria-hidden', 'true');
-  document.body.prepend(canvas);
-  context = canvas.getContext('2d');
-  resize();
-  window.addEventListener('resize', resize);
-  window.addEventListener('section:change', () => setTheme(document.documentElement.dataset.theme));
-  setTheme(document.documentElement.dataset.theme);
+// Reduced motion: no animation. An effect with a still version (the contour lines) draws it once; the others leave the
+// paper plain.
+function setStaticTheme(theme) {
+  const next = EFFECTS[theme];
+  effect = next?.drawStatic ? next : null;
+  context.clearRect(0, 0, width, height);
+  if (!effect) {
+    canvas.style.opacity = '0';
+    return;
+  }
+  if (ratioFor(effect) !== ratio) resize();
+  context.save();
+  effect.drawStatic();
+  context.restore();
+  canvas.style.opacity = String(opacityOf(effect));
 }
+
+canvas = document.createElement('canvas');
+canvas.id = 'theme-canvas';
+canvas.setAttribute('aria-hidden', 'true');
+document.body.prepend(canvas);
+context = canvas.getContext('2d');
+topo.attach(context, window.innerWidth, window.innerHeight);
+resize();
+window.addEventListener('resize', () => {
+  resize();
+  if (reducedMotion) setStaticTheme(document.documentElement.dataset.theme);
+});
+const apply = reducedMotion ? setStaticTheme : setTheme;
+window.addEventListener('section:change', () => apply(document.documentElement.dataset.theme));
+apply(document.documentElement.dataset.theme);

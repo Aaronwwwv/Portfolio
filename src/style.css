@@ -28,6 +28,19 @@
 /* Themes of the detail pages, set by sections.js as data-theme on <html>. The selectors are not tied to <html>, so any
    element can carry a theme. Every text colour is at least 7:1 on both
    --paper and --sheet; --accent alone may be lower, as it only colours rules, rims and focus-free decoration. */
+/* RUGTRAAK: Solana neon on near black. Purple and blue only for non-text uses; text is checked at 7:1 on the paper and
+   on the worst glass backdrop (the panel over the brightest halo, #00D1FF at 0.28): ink 15.4, muted 8.4, accent text 11.4 */
+[data-theme="rugtraak"] {
+  --paper: #07060F;
+  --sheet: #0E0B22;
+  --ink: #F4F1FF;
+  --muted: #B9B0E0;
+  --line: rgba(153, 69, 255, 0.35);
+  --accent: #9945FF;
+  --accent-2: #00D1FF;
+  --accent-text: #7FE0FF;
+  --swarm-color: #7FE0FF;
+}
 [data-theme="auxiga"] {
   --paper: #FFFFFF;
   --sheet: #F7F5F2;
@@ -106,9 +119,27 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 /* Background effect of a themed page, drawn by themes.js under the swarm; it fades in and out with the paper */
 #theme-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -3; opacity: 0; transition: opacity 0.5s ease; }
 
+/* RUGTRAAK halos: three large soft lights drifting slowly behind the contour lines, by CSS transform only */
+#theme-orbs { position: fixed; inset: 0; z-index: -4; pointer-events: none; overflow: hidden; opacity: 0; visibility: hidden; transition: opacity 0.5s ease, visibility 0s linear 0.5s; }
+[data-theme="rugtraak"] #theme-orbs { opacity: 1; visibility: visible; transition: opacity 0.5s ease; }
+#theme-orbs span { position: absolute; width: 70vmax; height: 70vmax; border-radius: 50%; will-change: transform; animation: orb-drift 48s ease-in-out infinite alternate; animation-play-state: paused; }
+[data-theme="rugtraak"] #theme-orbs span { animation-play-state: running; }
+#theme-orbs span:nth-child(1) { left: -20vmax; top: -25vmax; background: radial-gradient(circle, rgba(153, 69, 255, 0.35), transparent 65%); }
+#theme-orbs span:nth-child(2) { right: -25vmax; top: 10vmax; background: radial-gradient(circle, rgba(0, 209, 255, 0.28), transparent 65%); animation-duration: 58s; animation-delay: -21s; }
+#theme-orbs span:nth-child(3) { left: 15vmax; bottom: -35vmax; background: radial-gradient(circle, rgba(59, 26, 143, 0.5), transparent 65%); animation-duration: 41s; animation-delay: -9s; }
+@keyframes orb-drift { 0% { transform: translate(0, 0); } 50% { transform: translate(9vmax, 6vmax); } 100% { transform: translate(-6vmax, 10vmax); } }
+
+/* RUGTRAAK glass: the text and the ledger float over the halos and the contour lines */
+[data-theme="rugtraak"] .detail-page .text, [data-theme="rugtraak"] .detail-page .ledger { background: rgba(10, 8, 28, 0.62); -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 20px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 32px rgba(0, 0, 0, 0.35); padding: clamp(20px, 2.4vw, 40px); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-theme="rugtraak"] .detail-page .text, [data-theme="rugtraak"] .detail-page .ledger { background: rgba(10, 8, 28, 0.92); }
+}
+/* The docked particles orbit inside the blob: on this page the swarm and the blob go above the panels (still inert) */
+[data-theme="rugtraak"] #swarm-canvas, [data-theme="rugtraak"] #cursor-blob { z-index: 6; }
+
 /* Paint blob cursor of cursor.js: a lit drop of the page's accent with a soft rim; cursor.js moves, stretches and swells
    it, and --charge (set by the swarm) lights its glow. Opacity only changes through these classes. */
-@property --charge { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --charge { syntax: "<number>"; inherits: true; initial-value: 0; } /* inherited, so the ::after glow reads it */
 #cursor-blob { position: fixed; top: 0; left: 0; width: 22px; height: 22px; border-radius: 50%; pointer-events: none; z-index: -1; background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.35), transparent 60%), var(--accent); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); opacity: 0; transition: opacity 0.25s ease; will-change: transform; }
 #cursor-blob.is-visible { opacity: 0.55; }
 #cursor-blob.is-visible.is-hover { opacity: 0.35; }
@@ -247,6 +278,7 @@ button.back:hover { border-color: var(--accent); }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  #theme-orbs span { animation: none; }
   .exp-step { animation: none; }
   .exp-link { transition: none; }
 }

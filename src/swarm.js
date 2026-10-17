@@ -1,5 +1,6 @@
 import gsap from 'gsap';
 import { createNoise3D } from 'simplex-noise';
+import { cursorState } from './cursor.js';
 
 // Particle swarm behind the page: it drifts on a flow field, spells AARON in the intro and each page title, then settles into a faint blurred tornado.
 const PARTICLES = 1500; // desktop budget
@@ -100,6 +101,22 @@ const WARP_FADE_IN = 0.08; // share of the warp over which the stars brighten fr
 const WARP_RESPAWN_R = 40; // px, a forward star leaving the viewport comes back within this of the origin
 const WARP_ARRIVE_R = 24; // px, an inbound star this close to the origin comes back at the rim
 const WARP_CLASS = 'is-warp'; // on the canvas during a warp: style.css drops the background blur in 0.3 s
+// Absorbed: on these themes, once the title has been held, every particle flies into the paint blob and docks there.
+const ABSORB_THEMES = ['rugtraak'];
+const BLOB_ORBIT_R = 8; // px, each particle aims at its own fixed point within this of the blob centre
+const ABSORB_DELAY_MAX = 0.9; // s, start delays are spread between 0 and this
+const ABSORB_FLIGHT_MIN = 0.9; // s, each flight
+const ABSORB_FLIGHT_MAX = 1.4;
+const ORBIT_VISIBLE = 60; // the first docked particles stay drawn, circling inside the blob; the rest are hidden
+const ORBIT_R_MIN = 3; // px
+const ORBIT_R_MAX = 9;
+const ORBIT_SPEED = 2.6; // rad/s
+const ORBIT_ALPHA = 0.9;
+const ORBIT_DOT = 1.1; // px, half the side of an orbiting particle
+const CHARGE_FOLLOW = 0.08; // share of the way to the docked share the blob's charge covers per frame
+const RELEASE_MS = 400; // leaving the page: the charge drains over this
+const RELEASE_SPREAD = 26; // px, released particles start within this of the blob
+const TOUCH_FADE_MS = 800; // no fine pointer: the particles fade out instead, and the swarm rests
 
 const TAU = Math.PI * 2;
 const random = (min, max) => min + Math.random() * (max - min);
@@ -131,6 +148,18 @@ let introTimer = 0;
 const warp = { tween: null, p: 0, x: 0, y: 0, inward: false, onEnd: null, pendingTitle: null, streak: WARP_STREAK_MAX };
 let warpSpeed = null; // Float32Array, one per particle
 let warpBand = null; // Uint8Array, one per particle
+// Absorption: start time, docked count, whether the swarm rests (touch), and per particle its flight and its orbit.
+const absorb = { t0: 0, docked: 0, resting: false, charge: null };
+let absorbDelay = null;
+let absorbFlight = null;
+let absorbFromX = null;
+let absorbFromY = null;
+let absorbAimX = null;
+let absorbAimY = null;
+let orbitRadius = null;
+let orbitAngle = null;
+let dockOrder = null; // Int16Array: -1 while flying, else the order it docked in
+const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
 // Recorded before initSwarm too: the first title, sent while the page loads, must not be animated over the intro.
 // During a warp the new page's colour is taken at once and its title waits for the warp to end.
@@ -253,6 +282,104 @@ function release(next) {
   setState(next);
 }
 
+const absorbing = () => state === 'absorbing' || state === 'absorbed' || absorb.resting;
+
+// The title has been held: each particle sets off for the blob after its own delay. Without a fine pointer there is
+// no blob, so the particles fade out and the swarm rests until the page changes.
+function beginAbsorb() {
+  shown = null;
+  if (!finePointer) {
+    const tl = gsap.timeline();
+    tl.to(particles, { a: 0, duration: TOUCH_FADE_MS / 1000, ease: 'power1.out' });
+    tl.call(() => {
+      absorb.resting = true;
+      pause();
+    });
+    timeline = tl;
+    return;
+  }
+  absorb.t0 = gsap.ticker.time;
+  absorb.docked = 0;
+  for (let index = 0; index < particles.length; index += 1) {
+    const particle = particles[index];
+    particle.free = false;
+    absorbFromX[index] = particle.x;
+    absorbFromY[index] = particle.y;
+    absorbDelay[index] = random(0, ABSORB_DELAY_MAX);
+    absorbFlight[index] = random(ABSORB_FLIGHT_MIN, ABSORB_FLIGHT_MAX);
+    const aim = random(0, TAU);
+    const reach = Math.sqrt(Math.random()) * BLOB_ORBIT_R;
+    absorbAimX[index] = Math.cos(aim) * reach;
+    absorbAimY[index] = Math.sin(aim) * reach;
+    orbitRadius[index] = random(ORBIT_R_MIN, ORBIT_R_MAX);
+    orbitAngle[index] = random(0, TAU);
+    dockOrder[index] = -1;
+  }
+  setState('absorbing');
+}
+
+// Leaving the page: the particles come back out of the blob, around it, at their usual alpha, and the charge drains.
+function releaseAbsorbed() {
+  if (!absorbing()) return;
+  for (let index = 0; index < particles.length; index += 1) {
+    const particle = particles[index];
+    if (dockOrder[index] >= 0 || absorb.resting) {
+      const angle = random(0, TAU);
+      const spread = random(0, RELEASE_SPREAD);
+      particle.x = cursorState.x + Math.cos(angle) * spread;
+      particle.y = cursorState.y + Math.sin(angle) * spread;
+    }
+    particle.a = SWARM_ALPHA;
+    dockOrder[index] = -1;
+  }
+  absorb.charge?.kill();
+  absorb.charge = gsap.to(cursorState, { charge: 0, duration: RELEASE_MS / 1000, ease: 'power1.out' });
+  release('swarm');
+  if (absorb.resting) {
+    absorb.resting = false;
+    start();
+  }
+}
+
+// One frame of the absorption: flights eased toward the live blob position, then the docked particles circling in it.
+function absorbFrame(time, frames) {
+  context.clearRect(0, 0, width, height);
+  const elapsed = time - absorb.t0;
+  const targetX = cursorState.x;
+  const targetY = cursorState.y;
+  context.fillStyle = color;
+  context.globalAlpha = FORMED_ALPHA;
+  for (let index = 0; index < particles.length; index += 1) {
+    if (dockOrder[index] >= 0) continue;
+    const particle = particles[index];
+    const k = (elapsed - absorbDelay[index]) / absorbFlight[index];
+    if (k >= 1) {
+      dockOrder[index] = absorb.docked;
+      absorb.docked += 1;
+      continue;
+    }
+    if (k > 0) {
+      // power2.inOut, toward where the blob is now.
+      const eased = k < 0.5 ? 2 * k * k : 1 - ((-2 * k + 2) ** 2) / 2;
+      particle.x = absorbFromX[index] + (targetX + absorbAimX[index] - absorbFromX[index]) * eased;
+      particle.y = absorbFromY[index] + (targetY + absorbAimY[index] - absorbFromY[index]) * eased;
+    }
+    context.fillRect(particle.x - DOT_RADIUS_FORMED, particle.y - DOT_RADIUS_FORMED, DOT_RADIUS_FORMED * 2, DOT_RADIUS_FORMED * 2);
+  }
+  context.globalAlpha = ORBIT_ALPHA;
+  for (let index = 0; index < particles.length; index += 1) {
+    const order = dockOrder[index];
+    if (order < 0 || order >= ORBIT_VISIBLE) continue;
+    const angle = orbitAngle[index] + time * ORBIT_SPEED;
+    const x = targetX + Math.cos(angle) * orbitRadius[index];
+    const y = targetY + Math.sin(angle) * orbitRadius[index];
+    context.fillRect(x - ORBIT_DOT, y - ORBIT_DOT, ORBIT_DOT * 2, ORBIT_DOT * 2);
+  }
+  // The blob's charge follows the docked share; once everything has docked there is no swarm left on the page.
+  cursorState.charge += (absorb.docked / particles.length - cursorState.charge) * (1 - (1 - CHARGE_FOLLOW) ** frames);
+  if (absorb.docked === particles.length && state !== 'absorbed') setState('absorbed');
+}
+
 // Move timings: page titles stagger by a fixed step, the intro spreads its starts over a fixed time.
 const introStagger = (count) => INTRO_SPREAD / Math.max(1, count - 1);
 const TITLE_TIMING = { stagger: () => STAGGER, min: DURATION_MIN, max: DURATION_MAX };
@@ -356,6 +483,7 @@ export async function setSwarmTitle(text, { zone = 'band', hold = TITLE_HOLD_MS,
     return;
   }
   stop();
+  releaseAbsorbed();
   readLayout(); // the band height may change with the page
   const points = text ? sampleText(titleLines(text), zoneBox(zone)) : [];
   const tl = gsap.timeline();
@@ -364,7 +492,9 @@ export async function setSwarmTitle(text, { zone = 'band', hold = TITLE_HOLD_MS,
     shown = { text, zone, hold };
     at = addForm(tl, at, points, timing) + hold / 1000;
   }
-  addDisperse(tl, at);
+  // On an absorbing theme the held title flies into the blob instead of settling into the background.
+  if (points.length && ABSORB_THEMES.includes(document.documentElement.dataset.theme)) tl.call(beginAbsorb, null, at);
+  else addDisperse(tl, at);
   timeline = tl;
 }
 
@@ -403,6 +533,7 @@ export function startWarp(x, y, direction, onEnd) {
   }
   finishWarp();
   stop();
+  releaseAbsorbed();
   warp.x = x;
   warp.y = y;
   warp.inward = direction < 0;
@@ -523,6 +654,10 @@ function tick(time, deltaTime) {
     warpFrame(frames);
     return;
   }
+  if (state === 'absorbing' || state === 'absorbed') {
+    absorbFrame(time, frames);
+    return;
+  }
 
   // Erase pass: a faint fill leaves trails behind moving particles; formed text gets a clean frame.
   if (breathe) {
@@ -573,7 +708,7 @@ function tick(time, deltaTime) {
 }
 
 function start() {
-  if (running || reducedMotion) return;
+  if (running || reducedMotion || absorb.resting) return;
   running = true;
   gsap.ticker.add(tick);
 }
@@ -638,6 +773,15 @@ export function initSwarm() {
     warpBand[index] = pick < WARP_BAND_SHARE[0] ? 0 : pick < WARP_BAND_SHARE[0] + WARP_BAND_SHARE[1] ? 1 : 2;
   }
   warp.streak = small ? WARP_STREAK_SMALL : WARP_STREAK_MAX;
+  absorbDelay = new Float32Array(count);
+  absorbFlight = new Float32Array(count);
+  absorbFromX = new Float32Array(count);
+  absorbFromY = new Float32Array(count);
+  absorbAimX = new Float32Array(count);
+  absorbAimY = new Float32Array(count);
+  orbitRadius = new Float32Array(count);
+  orbitAngle = new Float32Array(count);
+  dockOrder = new Int16Array(count).fill(-1);
 
   let resizeTimer = 0;
   window.addEventListener('resize', () => {
@@ -659,5 +803,5 @@ export function initSwarm() {
     setSwarmTitle(lastTitle);
   }
   // Dev server only (Vite drops this from the build): lets a test hold the stars together with the pages.
-  if (import.meta.env.DEV) window.__swarmDebug = { warp: () => warp.tween, state: () => state };
+  if (import.meta.env.DEV) window.__swarmDebug = { warp: () => warp.tween, state: () => state, docked: () => absorb.docked, count: () => particles.length, charge: () => cursorState.charge, resting: () => absorb.resting };
 }
