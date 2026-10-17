@@ -9,8 +9,8 @@
   --accent-soft: rgba(201, 169, 106, 0.12);
   --ok: #7cc49a;
   --warn: #e0b46a;
-  --display: "Big Shoulders Stencil Display", Impact, sans-serif;
-  --body: "Quicksand", "Segoe UI", system-ui, sans-serif;
+  --display: "Cinzel", Georgia, serif; /* swarm.js reads this family for the titles it spells */
+  --body: "Jost", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
   --title-band: 120px; /* reserved 24px below the top of the viewport for the swarm's page title; swarm.js reads it */
   --title-gap: 48px; /* free space between the band and the page content, so the formed title keeps clear of the text */
@@ -136,9 +136,10 @@ button.back:hover { border-color: var(--accent); }
   .wrap { padding-block: var(--page-top) 56px; }
 }
 
-/* Narrow screens: a smaller title band, taller on the pages whose title takes two lines, and the menu as a column */
+/* Narrow screens: swarm.js starts the title below the Retour link and gives it the full width, so the band holds one
+   line in 104px and two lines in 168px; the menu becomes a column */
 @media (max-width: 520px) {
-  :root { --title-band: 96px; }
+  :root { --title-band: 104px; }
   :root[data-page="parcours"], :root[data-page="exp-tutorat"] { --title-band: 168px; }
   .menu { flex-direction: column; gap: 16px; align-items: flex-start; }
   .menu-btn { font-size: 22px; }

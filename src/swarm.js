@@ -41,8 +41,8 @@ const SKIP_IGNORED_KEYS = ['Tab', 'Shift']; // keys that move the focus (to Pass
 const TITLE_HOLD_MS = 1500;
 const INTRO_CLASS = 'is-intro'; // on <html> while the intro runs: style.css hides <main> so the word never crosses body text
 const INTRO_FALLBACK_MS = 500; // the release happens at the latest this long after it should have
-const FONT_LOAD = '700 120px "Big Shoulders Stencil Display"';
-const FONT_FAMILY = '"Big Shoulders Stencil Display", Impact, sans-serif';
+const TITLE_WEIGHT = 900; // weight of the titles the swarm spells; the family is --display in style.css
+const SAMPLE_SIZE = 120; // px, font size the titles are measured at before scaling to their box
 const TEXT_WIDTH = 0.7; // share of the viewport width a page title may take
 const INTRO_WIDTH = 0.92; // share of the viewport width for AARON
 const INTRO_HEIGHT = 0.6; // share of the viewport height AARON may take, centred
@@ -50,6 +50,10 @@ const BAND_TOP = 24; // px from the top of the viewport to the title band; the b
 const SWARM_CLASS = 'swarm-on'; // on <html> while the swarm runs: style.css then hides the headings the swarm spells
 const TEXT_FIT = 0.8; // share of the band height the title letters may take, centred in the band
 const BAND_SIDE_CLEAR = 96; // px kept free on each side of a page title, so it never meets the fixed Retour link (16..80 px)
+// Narrow screens: the title box starts below the Retour link (16..41 px from the top) instead of beside it, so the
+// letters may take the full width of the page; the band in style.css is sized for this.
+const NARROW_TOP = 48; // px from the top of the viewport
+const NARROW_SIDE = 20; // px on each side, the page gutter
 // A "\n" in a title marks where it breaks on narrow screens; wider screens join it with a space. style.css makes the
 // band of such a page taller under the same width.
 const TWO_LINE_QUERY = '(max-width: 520px)';
@@ -96,6 +100,7 @@ let state = 'swarm';
 let timeline = null;
 let running = false;
 let fontReady = null;
+let fontFamily = ''; // --display, read on each title request; a new family is loaded before any sampling
 let requests = 0; // the latest request wins when titles arrive faster than the font promise resolves
 let lastTitle = null; // last title received from the page
 let shown = null; // { text, zone } currently formed or forming, for a re-layout on resize
@@ -109,16 +114,35 @@ window.addEventListener('section:change', ({ detail }) => {
   if (canvas) setSwarmTitle(lastTitle);
 });
 
+const titleFont = (size) => `${TITLE_WEIGHT} ${size}px ${fontFamily}`;
+
+// The title family comes from --display; the font is loaded once per family, before the letters are sampled.
+function loadTitleFont() {
+  const family = getComputedStyle(document.documentElement).getPropertyValue('--display').trim();
+  if (family !== fontFamily || !fontReady) {
+    fontFamily = family;
+    fontReady = document.fonts.load(titleFont(SAMPLE_SIZE)).catch(() => {});
+  }
+  return fontReady;
+}
+
 // The band is as tall as the space style.css reserves above the page content.
 function readLayout() {
   titleBand = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--title-band')) || 0;
 }
 
 function zoneBox(zone) {
-  const boxWidth = zone === 'center' ? width * INTRO_WIDTH : Math.min(width * TEXT_WIDTH, width - 2 * BAND_SIDE_CLEAR);
-  const boxHeight = zone === 'center' ? height * INTRO_HEIGHT : titleBand * TEXT_FIT;
-  const top = zone === 'center' ? (height - boxHeight) / 2 : BAND_TOP + (titleBand - boxHeight) / 2;
-  return { x: (width - boxWidth) / 2, y: top, width: boxWidth, height: boxHeight };
+  if (zone === 'center') {
+    const boxWidth = width * INTRO_WIDTH;
+    const boxHeight = height * INTRO_HEIGHT;
+    return { x: (width - boxWidth) / 2, y: (height - boxHeight) / 2, width: boxWidth, height: boxHeight };
+  }
+  const narrow = twoLines.matches;
+  const top = narrow ? NARROW_TOP : BAND_TOP;
+  const room = BAND_TOP + titleBand - top; // the rest of the band below that top
+  const boxWidth = narrow ? width - 2 * NARROW_SIDE : Math.min(width * TEXT_WIDTH, width - 2 * BAND_SIDE_CLEAR);
+  const boxHeight = room * TEXT_FIT;
+  return { x: (width - boxWidth) / 2, y: top + (room - boxHeight) / 2, width: boxWidth, height: boxHeight };
 }
 
 function titleLines(text) {
@@ -129,11 +153,11 @@ function titleLines(text) {
 // Lines drawn to fit the box, each centred on the widest: font size, ink size and where each line's baseline starts,
 // measured from the top left of the ink.
 function fitText(target, lines, box) {
-  target.font = FONT_LOAD;
+  target.font = titleFont(SAMPLE_SIZE);
   const metrics = lines.map((line) => target.measureText(line));
   const widths = metrics.map((m) => m.actualBoundingBoxLeft + m.actualBoundingBoxRight);
   const inkWidth = Math.max(...widths);
-  const gap = 120 * LINE_GAP;
+  const gap = SAMPLE_SIZE * LINE_GAP;
   const inkHeight = metrics.reduce((sum, m) => sum + m.actualBoundingBoxAscent + m.actualBoundingBoxDescent, 0) + gap * (lines.length - 1);
   const scale = Math.min(box.width / inkWidth, box.height / inkHeight);
   let top = 0;
@@ -143,7 +167,7 @@ function fitText(target, lines, box) {
     return line;
   });
   return {
-    font: `700 ${120 * scale}px ${FONT_FAMILY}`,
+    font: titleFont(SAMPLE_SIZE * scale),
     inkWidth: Math.ceil(inkWidth * scale),
     inkHeight: Math.ceil(inkHeight * scale),
     lines: placed,
@@ -296,7 +320,7 @@ function addDisperse(tl, start) {
 
 export async function setSwarmTitle(text, { zone = 'band', hold = TITLE_HOLD_MS, timing = TITLE_TIMING } = {}) {
   const request = ++requests;
-  await fontReady;
+  await loadTitleFont();
   if (request !== requests || !canvas) return;
   stop();
   readLayout(); // the band height may change with the page
@@ -313,7 +337,7 @@ export async function setSwarmTitle(text, { zone = 'band', hold = TITLE_HOLD_MS,
 
 async function playIntro() {
   const request = ++requests;
-  await fontReady;
+  await loadTitleFont();
   if (request !== requests) {
     endIntro(); // a page title arrived first and takes over
     return;
@@ -431,7 +455,7 @@ export function initSwarm() {
   document.body.prepend(canvas);
   context = canvas.getContext('2d');
   sampler = document.createElement('canvas');
-  fontReady = document.fonts.load(FONT_LOAD).catch(() => {});
+  loadTitleFont();
   resize();
 
   const small = window.innerWidth < SMALL_SCREEN;
