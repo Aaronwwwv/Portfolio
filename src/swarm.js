@@ -1,11 +1,29 @@
 import gsap from 'gsap';
 import { createNoise3D } from 'simplex-noise';
 
-// Particle swarm behind the page: it drifts on a flow field, spells AARON in the intro and each page title, then settles as a faint blurred background.
+// Particle swarm behind the page: it drifts on a flow field, spells AARON in the intro and each page title, then settles into a faint blurred tornado.
 const PARTICLES = 1500; // desktop budget
 const SMALL_SCREEN = 760; // px, below this width the small budget applies (decided once, at load)
 const SMALL_PARTICLES = 400;
 const BACKGROUND_SHARE = 0.35; // share of the particles still drawn in background mode
+// Background: the visible particles follow a side-view tornado (the motion of the former bg.js, without its sprite layers).
+// Each one eases toward its own point on the funnel, so letters melt into the funnel without a jump.
+const TORNADO_MAX_PARTICLES = 600; // cap on the particles drawn in the background, desktop
+const TORNADO_MAX_SMALL = 250; // same, small screens
+const TORNADO_IDLE_SPEED = 0.35; // rad/s, base spin; the top turns at 0.5x this, the bottom at 2.7x
+const TORNADO_R_TOP_PCT = 34; // funnel radius at the top, in % of the viewport width
+const TORNADO_R_BOTTOM_PCT = 1.5; // funnel radius at the bottom, in % of the viewport width
+const TORNADO_SWAY = 1; // multiplier on the sideways swing of the funnel (0 = straight axis)
+const TORNADO_ROUGHNESS = 0.22; // how far the radius strays from the clean profile
+const TORNADO_BREATH = 0.08; // the top radius swells and shrinks by this share
+const TORNADO_BREATH_PERIOD = 14; // s
+const TORNADO_FLATTEN = 0.16; // height of an orbit relative to its width: the side-view projection
+const TORNADO_BASE_X = 0.68; // funnel axis, as a fraction of the viewport width
+const TORNADO_FOLLOW = 0.05; // share of the distance to its funnel point a particle covers per frame at 60 fps
+const TORNADO_SETTLE = 1.6; // s, fade from a title to the background
+const TORNADO_FAR_ALPHA = 0.45; // alpha factor on the far half of an orbit
+const TORNADO_NEAR_SIZE = 1.15; // dot size factor on the near half of an orbit
+const TORNADO_FAR_SIZE = 0.85; // same, far half
 // Intro, on a full load of the home page only: 0.2 s of free swarm, AARON formed across the screen by 1.1 s, held until
 // 1.7 s, then the content comes back and the particles regroup into the home title in the band, formed by about 2.7 s.
 const INTRO_WORD = 'AARON';
@@ -40,7 +58,6 @@ const STAGGER = 0.002; // s between the starts of two particles' moves
 const BREATH = 0.6; // px, maximum offset of a formed particle
 const BREATH_SPEED = 1.8; // rad/s
 const SWARM_SPEED = 1.4; // px per frame at 60 fps
-const BACKGROUND_SPEED = 0.35;
 const NOISE_SCALE = 0.0018; // flow field frequency, per px
 const NOISE_TIME = 0.06; // flow field evolution, per second
 const SWARM_ALPHA = 0.55;
@@ -67,6 +84,8 @@ let width = 0; // viewport, in CSS px
 let height = 0;
 let titleBand = 0; // px, read on each resize
 let particles = [];
+let backgroundCount = 0; // particles kept in the background, the first ones of the list
+let tornadoClock = 0; // s of tornado animation
 let state = 'swarm';
 let timeline = null;
 let running = false;
@@ -248,16 +267,12 @@ function addForm(tl, start, points, timing = TITLE_TIMING) {
   return end;
 }
 
-function addDisperse(tl, start, timing = TITLE_TIMING) {
-  const visible = Math.round(particles.length * BACKGROUND_SHARE);
-  tl.call(() => { shown = null; setState('dispersing'); }, null, start);
-  const end = addMoves(tl, start, (index) => ({
-    x: random(0, width),
-    y: random(0, height),
-    a: index < visible ? BACKGROUND_ALPHA : 0,
-  }), timing);
-  tl.call(release, ['background'], end);
-  return end;
+// The particles are let go to the tornado at once; the ones kept for the background fade to their alpha, the rest out.
+function addDisperse(tl, start) {
+  tl.call(() => { shown = null; release('dispersing'); }, null, start);
+  tl.to(particles, { a: (index) => (index < backgroundCount ? BACKGROUND_ALPHA : 0), duration: TORNADO_SETTLE, ease: 'power1.inOut' }, start);
+  tl.call(setState, ['background'], start + TORNADO_SETTLE);
+  return start + TORNADO_SETTLE;
 }
 
 export async function setSwarmTitle(text, { zone = 'band', hold = TITLE_HOLD_MS, timing = TITLE_TIMING } = {}) {
@@ -293,13 +308,26 @@ async function playIntro() {
   introTimeline = tl;
 }
 
+// Three sines of unrelated frequencies, normalised to -1..1: the roughness of the funnel radius.
+function wobble(x) {
+  return (Math.sin(x) + 0.6 * Math.sin(x * 2.3 + 1.7) + 0.35 * Math.sin(x * 4.1 + 4.2)) / 1.95;
+}
+
 function tick(time, deltaTime) {
-  const frames = Math.min(deltaTime, 100) / (1000 / 60);
-  const speed = state === 'background' ? BACKGROUND_SPEED : SWARM_SPEED;
+  const elapsed = Math.min(deltaTime, 100); // a long gap (tab in the background, slow frame) must not make anything jump
+  const frames = elapsed / (1000 / 60);
   const breathe = state === 'formed';
   const radius = breathe || state === 'forming' ? DOT_RADIUS_FORMED : DOT_RADIUS;
   const side = radius * 2;
   const flowTime = time * NOISE_TIME;
+
+  // Funnel for this frame, shared by every particle.
+  const tornado = state === 'dispersing' || state === 'background';
+  tornadoClock += elapsed / 1000;
+  const rTop = (TORNADO_R_TOP_PCT / 100) * width * (1 + TORNADO_BREATH * Math.sin((tornadoClock / TORNADO_BREATH_PERIOD) * TAU));
+  const rBottom = (TORNADO_R_BOTTOM_PCT / 100) * width;
+  const swayPhase = tornadoClock * 0.35 + 1.3 * Math.sin(tornadoClock * 0.17);
+  const follow = 1 - (1 - TORNADO_FOLLOW) ** frames;
 
   // Erase pass: a faint fill leaves trails behind moving particles; formed text gets a clean frame.
   if (breathe) {
@@ -316,10 +344,23 @@ function tick(time, deltaTime) {
   for (let index = 0; index < particles.length; index += 1) {
     const particle = particles[index];
     if (particle.a <= 0) continue;
-    if (particle.free) {
+    let alpha = particle.a;
+    let dot = radius;
+    if (particle.free && tornado) {
+      // Its point on the funnel: height t, orbit angle, and the near half of the orbit brighter and larger.
+      const { t } = particle;
+      const orbit = (rTop * particle.profile + rBottom) * (1 + TORNADO_ROUGHNESS * wobble(t * 3 + tornadoClock * 0.15));
+      const axis = TORNADO_BASE_X * width + TORNADO_SWAY * (0.04 + 0.1 * t) * width * Math.sin(t * 4.2 + swayPhase);
+      const angle = particle.theta0 + TORNADO_IDLE_SPEED * (0.5 + 2.2 * t) * tornadoClock;
+      const depth = Math.sin(angle);
+      particle.x += (axis + orbit * particle.jitter * Math.cos(angle) - particle.x) * follow;
+      particle.y += (t * height + orbit * TORNADO_FLATTEN * depth - particle.y) * follow;
+      if (depth <= 0) alpha *= TORNADO_FAR_ALPHA;
+      dot = radius * (depth > 0 ? TORNADO_NEAR_SIZE : TORNADO_FAR_SIZE);
+    } else if (particle.free) {
       const angle = noise3D(particle.x * NOISE_SCALE, particle.y * NOISE_SCALE, flowTime) * TAU;
-      particle.x += Math.cos(angle) * speed * frames;
-      particle.y += Math.sin(angle) * speed * frames;
+      particle.x += Math.cos(angle) * SWARM_SPEED * frames;
+      particle.y += Math.sin(angle) * SWARM_SPEED * frames;
       if (particle.x < 0) particle.x += width;
       else if (particle.x > width) particle.x -= width;
       if (particle.y < 0) particle.y += height;
@@ -331,8 +372,8 @@ function tick(time, deltaTime) {
       x += particle.breathX * offset;
       y += particle.breathY * offset;
     }
-    context.globalAlpha = particle.a;
-    context.fillRect(x - radius, y - radius, side, side);
+    context.globalAlpha = alpha;
+    context.fillRect(x - dot, y - dot, dot * 2, dot * 2);
   }
 }
 
@@ -373,9 +414,13 @@ export function initSwarm() {
   fontReady = document.fonts.load(FONT_LOAD).catch(() => {});
   resize();
 
-  const count = window.innerWidth < SMALL_SCREEN ? SMALL_PARTICLES : PARTICLES;
+  const small = window.innerWidth < SMALL_SCREEN;
+  const count = small ? SMALL_PARTICLES : PARTICLES;
+  backgroundCount = Math.min(Math.round(count * BACKGROUND_SHARE), small ? TORNADO_MAX_SMALL : TORNADO_MAX_PARTICLES);
   particles = Array.from({ length: count }, () => {
     const direction = random(0, TAU);
+    // t is the height in the funnel, 0 at the top and 1 at the bottom; the wide top gets a little more of the particles.
+    const t = Math.random() ** 1.3;
     return {
       x: random(0, width),
       y: random(0, height),
@@ -384,6 +429,10 @@ export function initSwarm() {
       phase: random(0, TAU),
       breathX: Math.cos(direction),
       breathY: Math.sin(direction),
+      t,
+      profile: (1 - t) ** 0.85, // share of the top radius at this height
+      theta0: random(0, TAU),
+      jitter: random(0.55, 1.1), // how far from the axis this particle orbits, relative to the funnel radius
     };
   });
 
