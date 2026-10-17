@@ -19,6 +19,15 @@ const TITLES = {
   'exp-auxiga': 'AUXIGA',
   'exp-tutorat': 'AARON\nTUTORAT',
 };
+// Theme of each detail page, set as data-theme on <html>; every other page keeps the default theme.
+const THEMES = {
+  'exp-mercor': 'mercor',
+  'exp-auxiga': 'auxiga',
+  'exp-tutorat': 'tutorat',
+  'projet-rugtraak': 'rugtraak',
+  'projet-sqkeys': 'sqkeys',
+  'projet-admp': 'admp',
+};
 // Pages with detail pages: the id prefix of their details and the list the details replace.
 const DETAILS = {
   projets: { prefix: 'projet', list: document.getElementById('projets-liste') },
@@ -56,6 +65,10 @@ function apply(route) {
   backHome.hidden = route.view === HOME || detail !== null;
   // style.css sizes the title band per page from this (a two-line title needs a taller band on narrow screens).
   document.documentElement.dataset.page = detail ? detail.id : route.view;
+  // Set before section:change, so the swarm reads the new theme's colour.
+  const theme = detail && THEMES[detail.id];
+  if (theme) document.documentElement.dataset.theme = theme;
+  else delete document.documentElement.dataset.theme;
   lenis.scrollTo(0, { immediate: true, force: true });
   window.dispatchEvent(new CustomEvent('section:change', { detail: { title: TITLES[detail ? detail.id : route.view] } }));
   return detail;

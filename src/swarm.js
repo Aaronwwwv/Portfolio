@@ -76,7 +76,7 @@ const TRAIL_FADE = 0.16; // alpha of the erase pass each frame; formed text clea
 const BACKGROUND_BLUR = 'blur(6px)';
 const DOT_RADIUS = 1; // px, half the side of a particle
 const DOT_RADIUS_FORMED = 1.4; // px, same while particles form or hold a word, for legibility
-const COLOR = '#C9A96A';
+const COLOR = '#C9A96A'; // until the page's --swarm-color is read
 const ERASE = '#000';
 const MAX_DPR = 2;
 const RESIZE_DELAY = 200; // ms
@@ -103,12 +103,14 @@ let fontReady = null;
 let fontFamily = ''; // --display, read on each title request; a new family is loaded before any sampling
 let requests = 0; // the latest request wins when titles arrive faster than the font promise resolves
 let lastTitle = null; // last title received from the page
+let color = COLOR; // --swarm-color of the page shown, read once per page change
 let shown = null; // { text, zone } currently formed or forming, for a re-layout on resize
 let introTimeline = null;
 let introTimer = 0;
 
 // Recorded before initSwarm too: the first title, sent while the page loads, must not be animated over the intro.
 window.addEventListener('section:change', ({ detail }) => {
+  color = getComputedStyle(document.documentElement).getPropertyValue('--swarm-color').trim() || COLOR;
   if (detail.title === lastTitle) return;
   lastTitle = detail.title;
   if (canvas) setSwarmTitle(lastTitle);
@@ -383,7 +385,7 @@ function tick(time, deltaTime) {
     context.fillRect(0, 0, width, height);
     context.globalCompositeOperation = 'source-over';
   }
-  context.fillStyle = COLOR;
+  context.fillStyle = color;
 
   for (let index = 0; index < particles.length; index += 1) {
     const particle = particles[index];

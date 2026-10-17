@@ -7,6 +7,8 @@
   --line: #2E2A20;
   --accent: #C9A96A;
   --accent-soft: rgba(201, 169, 106, 0.12);
+  --accent-text: var(--accent); /* the accent where it colours text; themes whose accent fails 7:1 as text set a darker one */
+  --swarm-color: #C9A96A; /* swarm.js reads it on each page change for the titles and the background */
   --ok: #7cc49a;
   --warn: #e0b46a;
   --display: "Cinzel", Georgia, serif; /* swarm.js reads this family for the titles it spells */
@@ -18,11 +20,63 @@
   color-scheme: dark;
 }
 
+/* Themes of the detail pages, set by sections.js as data-theme on <html>. The selectors are not tied to <html> so that
+   tunnel.js can read a theme it has not applied yet from a probe element. Every text colour is at least 7:1 on both
+   --paper and --sheet; --accent alone may be lower, as it only colours rules, rims and focus-free decoration. */
+[data-theme="tutorat"], [data-theme="rugtraak"] {
+  --muted: #BDB194;
+}
+[data-theme="auxiga"] {
+  --paper: #FFFFFF;
+  --sheet: #F7F5F2;
+  --ink: #2B2B2B;
+  --muted: #4E4E4E;
+  --line: #E4DED5;
+  --accent: #F08818;
+  --accent-text: #7F4407;
+  --swarm-color: #5A330D;
+  color-scheme: light;
+}
+[data-theme="mercor"] {
+  --paper: #FBFAFF;
+  --sheet: #F2F0FD;
+  --ink: #1A1530;
+  --muted: #433C66;
+  --line: #DCD8F2;
+  --accent: #6A60F8;
+  --accent-text: #3A2FC0;
+  --swarm-color: #2D2390;
+  color-scheme: light;
+}
+[data-theme="sqkeys"] {
+  --paper: #232323;
+  --sheet: #2E2E2E;
+  --ink: #F2F2F2;
+  --muted: #C4C4C4;
+  --line: #444444;
+  --accent: #F85830;
+  --accent-text: #FBA690;
+  --swarm-color: #F86844;
+  --ok: #87C9A2;
+}
+[data-theme="admp"] {
+  --paper: #12171A;
+  --sheet: #1A2125;
+  --ink: #ECE8E1;
+  --muted: #B9B3A8;
+  --line: #2C363B;
+  --accent: #B87333;
+  --accent-text: #D79F6C;
+  --swarm-color: #C8875A;
+}
+
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; }
 img { max-width: 100%; }
-body { background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--body); }
+/* The paper sits on <html> and crossfades when the theme changes, so a light page never flashes in */
+html { background: var(--paper); transition: background-color 0.5s ease; }
+body { color: var(--ink); font: 400 16px/1.6 var(--body); }
 .wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: var(--page-top) 72px; display: grid; gap: 56px; }
 /* The browser also scrolls to the section named in the hash on load: as tall as the top padding, that jump stays at the very top */
 main > section { scroll-margin-top: var(--page-top); }
@@ -31,8 +85,8 @@ main { transition: opacity 0.6s ease; }
 html.is-intro main { opacity: 0; visibility: hidden; pointer-events: none; transition: none; }
 .stack { display: grid; gap: 56px; }
 .stack > * { min-width: 0; }
-a { color: var(--accent); text-underline-offset: 3px; }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+a { color: var(--accent-text); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 2px; }
 h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
 .label { font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: -1px; padding: 0; border: 0; }
@@ -98,7 +152,7 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 
 .detail-page { display: grid; gap: 28px; }
 .detail-page > * { min-width: 0; }
-button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--accent-text); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
 button.back:hover { border-color: var(--accent); }
 .detail { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 28px; }
 .detail .text { min-width: 0; display: grid; gap: 12px; align-content: start; }
@@ -109,7 +163,7 @@ button.back:hover { border-color: var(--accent); }
 .ledger dl { margin: 0; display: grid; gap: 10px; }
 .ledger div { display: grid; gap: 2px; }
 .ledger dt { font-size: 13px; color: var(--muted); }
-.ledger dd { margin: 0; font: 500 20px/1.2 var(--mono); font-variant-numeric: tabular-nums; color: var(--accent); }
+.ledger dd { margin: 0; font: 500 20px/1.2 var(--mono); font-variant-numeric: tabular-nums; color: var(--accent-text); }
 .ledger dd small { font: 400 12px var(--body); color: var(--muted); margin-left: 4px; }
 
 .status { display: grid; gap: 8px; margin-top: 4px; }
