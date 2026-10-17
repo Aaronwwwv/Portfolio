@@ -50,6 +50,10 @@ const BAND_TOP = 24; // px from the top of the viewport to the title band; the b
 const SWARM_CLASS = 'swarm-on'; // on <html> while the swarm runs: style.css then hides the headings the swarm spells
 const TEXT_FIT = 0.8; // share of the band height the title letters may take, centred in the band
 const BAND_SIDE_CLEAR = 96; // px kept free on each side of a page title, so it never meets the fixed Retour link (16..80 px)
+// A "\n" in a title marks where it breaks on narrow screens; wider screens join it with a space. style.css makes the
+// band of such a page taller under the same width.
+const TWO_LINE_QUERY = '(max-width: 520px)';
+const LINE_GAP = 0.2; // space between two title lines, as a share of the font size
 const SAMPLE_REFINE = 0.9; // the grid step shrinks by this factor until the letters hold one point per particle
 const ALPHA_THRESHOLD = 128;
 const DURATION_MIN = 1.1; // s, each particle's move
@@ -77,6 +81,7 @@ const TAU = Math.PI * 2;
 const random = (min, max) => min + Math.random() * (max - min);
 const noise3D = createNoise3D();
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const twoLines = window.matchMedia(TWO_LINE_QUERY);
 
 let canvas = null;
 let context = null;
@@ -116,33 +121,46 @@ function zoneBox(zone) {
   return { x: (width - boxWidth) / 2, y: top, width: boxWidth, height: boxHeight };
 }
 
-// Text drawn to fit the box: font size, ink size and the offsets that put the ink at the top left of its own box.
-function fitText(target, text, box) {
+function titleLines(text) {
+  const lines = text.split('\n');
+  return twoLines.matches ? lines : [lines.join(' ')];
+}
+
+// Lines drawn to fit the box, each centred on the widest: font size, ink size and where each line's baseline starts,
+// measured from the top left of the ink.
+function fitText(target, lines, box) {
   target.font = FONT_LOAD;
-  const metrics = target.measureText(text);
-  const inkWidth = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
-  const inkHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+  const metrics = lines.map((line) => target.measureText(line));
+  const widths = metrics.map((m) => m.actualBoundingBoxLeft + m.actualBoundingBoxRight);
+  const inkWidth = Math.max(...widths);
+  const gap = 120 * LINE_GAP;
+  const inkHeight = metrics.reduce((sum, m) => sum + m.actualBoundingBoxAscent + m.actualBoundingBoxDescent, 0) + gap * (lines.length - 1);
   const scale = Math.min(box.width / inkWidth, box.height / inkHeight);
+  let top = 0;
+  const placed = metrics.map((m, index) => {
+    const line = { text: lines[index], x: ((inkWidth - widths[index]) / 2 + m.actualBoundingBoxLeft) * scale, y: (top + m.actualBoundingBoxAscent) * scale };
+    top += m.actualBoundingBoxAscent + m.actualBoundingBoxDescent + gap;
+    return line;
+  });
   return {
     font: `700 ${120 * scale}px ${FONT_FAMILY}`,
     inkWidth: Math.ceil(inkWidth * scale),
     inkHeight: Math.ceil(inkHeight * scale),
-    left: metrics.actualBoundingBoxLeft * scale,
-    ascent: metrics.actualBoundingBoxAscent * scale,
+    lines: placed,
   };
 }
 
 // Viewport points inside the letters on an even grid, shuffled. The step starts from the ink area so the grid holds
 // about one point per particle: the dots spread evenly over the letters instead of clumping.
-function sampleText(text, box) {
+function sampleText(lines, box) {
   const target = sampler.getContext('2d', { willReadFrequently: true });
-  const fit = fitText(target, text, box);
+  const fit = fitText(target, lines, box);
   if (!(fit.inkWidth > 0 && fit.inkHeight > 0)) return [];
   sampler.width = fit.inkWidth;
   sampler.height = fit.inkHeight;
   target.font = fit.font;
   target.fillStyle = '#fff';
-  target.fillText(text, fit.left, fit.ascent);
+  fit.lines.forEach((line) => target.fillText(line.text, line.x, line.y));
   const { data } = target.getImageData(0, 0, fit.inkWidth, fit.inkHeight);
   const originX = box.x + (box.width - fit.inkWidth) / 2;
   const originY = box.y + (box.height - fit.inkHeight) / 2;
@@ -281,7 +299,8 @@ export async function setSwarmTitle(text, { zone = 'band', hold = TITLE_HOLD_MS,
   await fontReady;
   if (request !== requests || !canvas) return;
   stop();
-  const points = text ? sampleText(text, zoneBox(zone)) : [];
+  readLayout(); // the band height may change with the page
+  const points = text ? sampleText(titleLines(text), zoneBox(zone)) : [];
   const tl = gsap.timeline();
   let at = 0;
   if (points.length) {
@@ -302,7 +321,7 @@ async function playIntro() {
   stop();
   const tl = gsap.timeline();
   tl.call(release, ['swarm'], 0);
-  const points = sampleText(INTRO_WORD, zoneBox('center'));
+  const points = sampleText([INTRO_WORD], zoneBox('center'));
   if (points.length) addForm(tl, INTRO_SWARM_MS / 1000, points, INTRO_TIMING);
   tl.call(releaseIntro, null, INTRO_RELEASE);
   timeline = tl;

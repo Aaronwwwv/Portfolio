@@ -7,10 +7,10 @@ const ROUTES = ['accueil', 'parcours', 'projets', 'contact'];
 const HOME = 'accueil';
 const FADE_OUT = 0.25; // s
 const FADE_IN = 0.35; // s
-// Page title the swarm spells for each page, by section id.
+// Page title the swarm spells for each page, by section id; "\n" is where it breaks on narrow screens.
 const TITLES = {
   accueil: 'PORTFOLIO',
-  parcours: 'À PROPOS',
+  parcours: 'À PROPOS\nDE MOI',
   projets: 'PROJETS',
   contact: 'CONTACT',
   'projet-rugtraak': 'RUGTRAAK',
@@ -43,6 +43,8 @@ function apply(route) {
   projectDetails.forEach((section) => { section.hidden = section !== detail; });
   // Retour leads home from the three menu pages; the detail pages keep their own button back to the list.
   backHome.hidden = route.view === HOME || detail !== null;
+  // style.css sizes the title band per page from this (a two-line title needs a taller band on narrow screens).
+  document.documentElement.dataset.view = route.view;
   lenis.scrollTo(0, { immediate: true, force: true });
   window.dispatchEvent(new CustomEvent('section:change', { detail: { title: TITLES[detail ? detail.id : route.view] } }));
   return detail;

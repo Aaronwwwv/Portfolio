@@ -13,6 +13,8 @@
   --body: "Quicksand", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
   --title-band: 120px; /* reserved 24px below the top of the viewport for the swarm's page title; swarm.js reads it */
+  --title-gap: 48px; /* free space between the band and the page content, so the formed title keeps clear of the text */
+  --page-top: calc(24px + var(--title-band) + var(--title-gap));
   color-scheme: dark;
 }
 
@@ -21,9 +23,9 @@
 body { margin: 0; }
 img { max-width: 100%; }
 body { background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--body); }
-.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: calc(24px + var(--title-band)) 72px; display: grid; gap: 56px; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: var(--page-top) 72px; display: grid; gap: 56px; }
 /* The browser also scrolls to the section named in the hash on load: as tall as the top padding, that jump stays at the very top */
-main > section { scroll-margin-top: calc(24px + var(--title-band)); }
+main > section { scroll-margin-top: var(--page-top); }
 /* Intro: swarm.js puts .is-intro on <html> while the swarm spells the intro words; <main> waits hidden and inert, the header stays usable, and the content fades back */
 main { transition: opacity 0.6s ease; }
 html.is-intro main { opacity: 0; visibility: hidden; pointer-events: none; transition: none; }
@@ -117,12 +119,13 @@ button.back:hover { border-color: var(--accent); }
   .detail { grid-template-columns: minmax(0, 1fr); }
   .small-grid { grid-template-columns: minmax(0, 1fr); }
   .wrap, .stack { gap: 40px; }
-  .wrap { padding-block: calc(24px + var(--title-band)) 56px; }
+  .wrap { padding-block: var(--page-top) 56px; }
 }
 
-/* Narrow screens: a smaller title band and the menu as a column */
+/* Narrow screens: a smaller title band, taller on the page whose title takes two lines, and the menu as a column */
 @media (max-width: 520px) {
   :root { --title-band: 96px; }
+  :root[data-view="parcours"] { --title-band: 168px; }
   .menu { flex-direction: column; gap: 16px; align-items: flex-start; }
   .menu-btn { font-size: 22px; }
 }
