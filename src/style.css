@@ -94,12 +94,21 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 /* The swarm spells these titles in the band, so the text stays for screen readers only; without the swarm they show as usual */
 html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: -1px; padding: 0; border: 0; }
 
+/* Layers behind the content, back to front: the paper on <html>, the theme effect (-3), the swarm (-2), the paint blob (-1) */
 /* Particle swarm drawn by swarm.js, which sets the blur of background mode once per state change */
-#swarm-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; transition: filter 0.8s ease; }
+#swarm-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -2; transition: filter 0.8s ease; }
 /* During a warp the stars are sharp: the background blur goes in 0.3 s and comes back when the warp ends */
 #swarm-canvas.is-warp { filter: none !important; transition: filter 0.3s ease; }
 /* Background effect of a themed page, drawn by themes.js under the swarm; it fades in and out with the paper */
-#theme-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -2; opacity: 0; transition: opacity 0.5s ease; }
+#theme-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -3; opacity: 0; transition: opacity 0.5s ease; }
+
+/* Paint blob cursor of cursor.js: a lit drop of the page's accent with a soft rim; cursor.js moves, stretches and swells
+   it, and --charge (set by the swarm) lights its glow. Opacity only changes through these classes. */
+@property --charge { syntax: "<number>"; inherits: false; initial-value: 0; }
+#cursor-blob { position: fixed; top: 0; left: 0; width: 22px; height: 22px; border-radius: 50%; pointer-events: none; z-index: -1; background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.35), transparent 60%), var(--accent); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); opacity: 0; transition: opacity 0.25s ease; will-change: transform; }
+#cursor-blob.is-visible { opacity: 0.55; }
+#cursor-blob.is-visible.is-hover { opacity: 0.35; }
+#cursor-blob::after { content: ""; position: absolute; inset: -60%; border-radius: 50%; background: radial-gradient(circle, var(--accent), transparent 70%); opacity: var(--charge); pointer-events: none; }
 
 /* Way back to the home menu, shown by sections.js on the three pages it leads to */
 #back-home { position: fixed; top: 16px; left: 16px; z-index: 10; font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); text-decoration: none; padding: 4px 6px; }
