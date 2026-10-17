@@ -22,6 +22,8 @@ body { margin: 0; }
 img { max-width: 100%; }
 body { background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--body); }
 .wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: calc(24px + var(--title-band)) 72px; display: grid; gap: 56px; }
+/* The browser also scrolls to the section named in the hash on load: as tall as the top padding, that jump stays at the very top */
+main > section { scroll-margin-top: calc(24px + var(--title-band)); }
 /* Intro: swarm.js puts .is-intro on <html> while the swarm spells the intro words; <main> waits hidden and inert, the header stays usable, and the content fades back */
 main { transition: opacity 0.6s ease; }
 html.is-intro main { opacity: 0; visibility: hidden; pointer-events: none; transition: none; }
@@ -75,7 +77,8 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 #bubble-stage { position: relative; width: 100%; height: 80vh; min-height: 560px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: linear-gradient(180deg, rgba(201,169,106,0.03), transparent 60%); }
 #bubble-canvas { display: block; }
 /* Reduced motion: the same bubbles as static buttons */
-.bubble { position: absolute; transform: translate(-50%, -50%); border: 2px solid rgba(201, 169, 106, 0.75); border-radius: 50%; background: radial-gradient(circle 23px at 30% 30%, rgba(255, 255, 255, 0.25), transparent), rgba(201, 169, 106, 0.10); color: var(--ink); font: 600 15px var(--body); cursor: pointer; }
+.bubble { position: absolute; transform: translate(-50%, -50%); border: 2px solid rgba(201, 169, 106, 0.75); border-radius: 50%; background: radial-gradient(circle 23px at 30% 30%, rgba(255, 255, 255, 0.25), transparent), rgba(201, 169, 106, 0.10); color: var(--ink); font: 600 15px var(--body); cursor: pointer; display: grid; place-items: center; align-content: center; gap: 6px; }
+.bubble img { width: 46%; aspect-ratio: 1; border-radius: 50%; }
 /* Stand-in for a clicked bubble while it swells and fades, just before the burst */
 .bubble-pop { position: absolute; display: grid; place-items: center; border: 2px solid rgba(201, 169, 106, 0.9); border-radius: 50%; background: rgba(201, 169, 106, 0.14); color: var(--ink); font: 600 15px var(--body); pointer-events: none; }
 .burst-particle { position: absolute; background: var(--accent); border-radius: 1px; pointer-events: none; }
