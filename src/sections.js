@@ -24,7 +24,6 @@ const backHome = document.getElementById('back-home');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 let current = readRoute();
-let shownIndex = ROUTES.indexOf(current.view);
 let timeline = null;
 
 function readRoute() {
@@ -44,7 +43,6 @@ function apply(route) {
   projectDetails.forEach((section) => { section.hidden = section !== detail; });
   // Retour leads home from the three menu pages; the detail pages keep their own button back to the list.
   backHome.hidden = route.view === HOME || detail !== null;
-  shownIndex = ROUTES.indexOf(route.view);
   lenis.scrollTo(0, { immediate: true, force: true });
   window.dispatchEvent(new CustomEvent('section:change', { detail: { title: TITLES[detail ? detail.id : route.view] } }));
   return detail;
@@ -75,13 +73,6 @@ function navigate(route) {
       { opacity: 0 },
       { opacity: 1, duration: FADE_IN, ease: 'power2.out', clearProps: 'opacity' },
     );
-}
-
-// Position in the site as one number: the section index, plus how far that section is scrolled.
-export function getSectionProgress() {
-  const range = document.documentElement.scrollHeight - window.innerHeight;
-  const scrolled = range > 0 ? Math.min(Math.max(window.scrollY / range, 0), 1) : 0;
-  return shownIndex + scrolled * 0.99;
 }
 
 // Escape climbs one level: a project detail goes back to the list, a menu page goes home.

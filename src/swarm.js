@@ -6,7 +6,7 @@ const PARTICLES = 1500; // desktop budget
 const SMALL_SCREEN = 760; // px, below this width the small budget applies (decided once, at load)
 const SMALL_PARTICLES = 400;
 const BACKGROUND_SHARE = 0.35; // share of the particles still drawn in background mode
-// Background: the visible particles follow a side-view tornado (the motion of the former bg.js, without its sprite layers).
+// Background: the visible particles follow a side-view tornado (the motion of the former blurred sprite background).
 // Each one eases toward its own point on the funnel, so letters melt into the funnel without a jump.
 const TORNADO_MAX_PARTICLES = 600; // cap on the particles drawn in the background, desktop
 const TORNADO_MAX_SMALL = 250; // same, small screens
