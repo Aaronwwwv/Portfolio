@@ -195,8 +195,16 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 .meta { font: 400 clamp(13px, 0.7rem + 0.2vw, 16px)/1.5 var(--mono); color: var(--muted); max-width: 78ch; } /* monospace: 1ch is one character */
 .note { font-size: 14px; color: var(--muted); }
 
-.entry { padding-block: 22px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
-.entry:last-child { border-bottom: 0; }
+.entry { padding-block: 22px; display: grid; gap: 8px; }
+
+/* Guitar strings: the long rules of the about and contact pages are 1px elements in the flow. strings.js reads their
+   colour, width and place, hides them with .strings-on on <html> and draws them on #strings-canvas, where the paint blob
+   can pluck them; touch screens and reduced motion keep the plain rules. */
+.section-head.has-string { border-bottom: 0; }
+.rule { --string-color: var(--accent); height: 1px; background: var(--string-color); }
+.rule.is-line { --string-color: var(--line); }
+html.strings-on .rule { background: transparent; }
+#strings-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; }
 .entry h3 { font-size: clamp(19px, 0.85rem + 0.6vw, 28px); }
 .entry ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: var(--measure); }
 /* About page: the two blocks share the screen height, the experience staircase at the bottom */
