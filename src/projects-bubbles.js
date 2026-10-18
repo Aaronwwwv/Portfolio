@@ -60,22 +60,50 @@ const LABEL_FONT = '500 12px "JetBrains Mono", ui-monospace, monospace';
 const LABEL_SPACING = 0.12; // em
 const LABEL_COLOR = '#F0E6CC';
 const LABEL_GAP = 18; // px between the bubble and the middle of its label
-// Frame: the rounded rectangle the walls enclose, invisible but for a segment of light travelling around it and the sides
-// the bubbles hit, which light up for a moment around the contact point.
-const FRAME_RADIUS = 14; // px
-const FRAME_COLOR = '#C9A96A';
-const FRAME_WIDTH = 1.5; // px, stroke of the segment and the impacts
-const SEGMENT_FRACTION = 0.16; // share of the perimeter the travelling segment covers
-const SEGMENT_SPEED = 14; // s per lap
-const SEGMENT_ALPHA = 0.35;
+// Frame: the rounded rectangle the walls enclose stays invisible. The walls are solid; a bubble hitting one leaves only a
+// short straight line on the wall at the contact point, which fades out.
+const FRAME_RADIUS = 14; // px, rounded corners the impact lines keep clear of
+const CONTAIN_SLACK = 0.1; // share of the radius a bubble may sink into a wall before the safety pass puts it back
 const IMPACT_MAX = 6; // impacts shown at once; a new one replaces the oldest
-const IMPACT_LIFE_MS = 700;
-const IMPACT_LENGTH = 140; // px, lit length of the side for the strongest impact
+const IMPACT_LIFE_MS = 450;
+const IMPACT_LENGTH_MIN = 18; // px, line of the faintest impact that shows
+const IMPACT_LENGTH_MAX = 64; // px, line of the strongest
+const IMPACT_WIDTH = 1.5; // px
+const IMPACT_COLOR = '#C9A96A';
 const IMPACT_ALPHA = 0.8;
-const IMPACT_RING = 6; // px, radius the ring at the contact point grows to
 const IMPACT_MIN_SPEED = 0.4; // px per step toward the wall; below it a touch is resting contact and shows nothing
-const IMPACT_FULL_SPEED = 6; // px per step toward the wall for a full-strength impact
+const IMPACT_FULL_SPEED = 6; // px per step toward the wall (or toward each other) for a full-strength impact
 const IMPACT_MIN_STRENGTH = 0.2; // the faintest impact that does show
+// Sparks: a few golden streaks flying off along the contact, from a fixed pool, all drawn in one path and one stroke.
+// One stroke shares its width, colour and alpha, so those follow the newest burst; each streak also shortens as it dies.
+const SPARK_POOL = 24;
+const SPARK_COUNT = 3; // at full strength; weaker impacts give fewer
+const SPARK_MIN_STRENGTH = 0.3; // below this an impact gives no spark at all
+const SPARK_SIZE_MIN = 1.5; // px, line width of the weakest burst
+const SPARK_SIZE_MAX = 2.5; // px, of the strongest
+const SPARK_STREAK_MIN = 4; // px, streak length at birth
+const SPARK_STREAK_MAX = 8;
+const SPARK_SPEED_MIN = 60; // px/s
+const SPARK_SPEED_MAX = 160;
+const SPARK_SPREAD = 0.45; // rad, random spread around the contact tangent
+const SPARK_LIFE_MS = 350;
+const SPARK_HOT = '#F0E6CC'; // a fresh burst
+const SPARK_COOL = '#C9A96A'; // after SPARK_HOT_SHARE of its life
+const SPARK_HOT_SHARE = 0.35;
+// Soft bubbles: the bodies stay rigid circles; two damped springs per bubble only deform how they are drawn.
+// Squash: a hit flattens the bubble along the contact normal, then it swings back 2 to 3 times in about 500 ms.
+// Stretch: a fast drag or throw lengthens it along its acceleration, settling by itself in about 600 ms.
+const WOBBLE_MAX = 0.2; // largest deformation either way
+const WOBBLE_STIFFNESS = 900; // 1/s², about 4.7 Hz once damped
+const WOBBLE_DAMPING = 12; // 1/s: 5 % of the swing is left after 500 ms
+const SQUASH_GAIN = 0.035; // squash per px per step of approach speed
+const STRETCH_STIFFNESS = 420; // 1/s², about 3.2 Hz
+const STRETCH_DAMPING = 10; // 1/s: 5 % left after 600 ms
+const STRETCH_GAIN = 0.00005; // stretch per px/s² of smoothed acceleration
+const ACCEL_SMOOTHING = 0.3; // share of a new acceleration reading taken per step
+const STEP_RATE = 60; // Matter steps per second; its velocities are in px per step
+const WOBBLE_DT_MAX = 1 / 30; // s, longest spring step, so a slow frame cannot blow the springs up
+const WOBBLE_REST = 0.0005; // below this, with no speed, a spring is at rest and skipped
 
 const stage = document.getElementById('bubble-stage');
 const canvas = document.getElementById('bubble-canvas');
@@ -319,35 +347,23 @@ function startPhysics() {
     Composite.add(engine.world, walls);
   }
 
-  // Frame geometry, rebuilt on show and resize only: the path the walls enclose, inset by half the stroke so it is never
-  // clipped, its perimeter for the dash, and each side as a straight line between its rounded corners.
-  const frame = { path: null, perimeter: 0, dash: [0, 0], sides: {} };
+  // Frame geometry, rebuilt on show and resize only: each side as a straight line between its rounded corners, inset by
+  // half the impact stroke so a line is never clipped.
+  const frame = { sides: {} };
 
   function buildFrame(width, height) {
-    const inset = FRAME_WIDTH / 2;
+    const inset = IMPACT_WIDTH / 2;
     const left = inset;
     const top = inset;
     const right = width - inset;
     const bottom = height - inset;
     const r = Math.min(FRAME_RADIUS, (right - left) / 2, (bottom - top) / 2);
-    // Starts at the top left end of the top side, clockwise.
-    const path = new Path2D();
-    path.moveTo(left + r, top);
-    path.arcTo(right, top, right, bottom, r);
-    path.arcTo(right, bottom, left, bottom, r);
-    path.arcTo(left, bottom, left, top, r);
-    path.arcTo(left, top, right, top, r);
-    path.closePath();
-    frame.path = path;
-    frame.perimeter = 2 * (right - left - 2 * r) + 2 * (bottom - top - 2 * r) + 2 * Math.PI * r;
-    frame.dash[0] = frame.perimeter * SEGMENT_FRACTION;
-    frame.dash[1] = frame.perimeter - frame.dash[0];
-    // Per side: the fixed coordinate, and the range the lit segment may cover along it.
+    // Per side: the fixed coordinate, the range an impact line may cover along it, and the normal angle out of the stage.
     frame.sides = {
-      top: { horizontal: true, at: top, from: left + r, to: right - r },
-      bottom: { horizontal: true, at: bottom, from: left + r, to: right - r },
-      left: { horizontal: false, at: left, from: top + r, to: bottom - r },
-      right: { horizontal: false, at: right, from: top + r, to: bottom - r },
+      top: { horizontal: true, at: top, from: left + r, to: right - r, normal: -Math.PI / 2 },
+      bottom: { horizontal: true, at: bottom, from: left + r, to: right - r, normal: Math.PI / 2 },
+      left: { horizontal: false, at: left, from: top + r, to: bottom - r, normal: Math.PI },
+      right: { horizontal: false, at: right, from: top + r, to: bottom - r, normal: 0 },
     };
   }
 
@@ -356,54 +372,122 @@ function startPhysics() {
   let nextImpact = 0;
   let impactCount = 0; // read by the dev hook only
 
+  // Sparks in typed arrays: position, velocity (px/s), birth time and streak length; the oldest slot is reused.
+  const sparkX = new Float32Array(SPARK_POOL);
+  const sparkY = new Float32Array(SPARK_POOL);
+  const sparkVX = new Float32Array(SPARK_POOL);
+  const sparkVY = new Float32Array(SPARK_POOL);
+  const sparkBorn = new Float64Array(SPARK_POOL).fill(-Infinity);
+  const sparkStreak = new Float32Array(SPARK_POOL);
+  let nextSpark = 0;
+  let sparkCount = 0; // read by the dev hook only
+  let burstAt = -Infinity; // time and line width of the newest burst, which the shared stroke follows
+  let burstWidth = SPARK_SIZE_MIN;
+
+  // Up to SPARK_COUNT sparks from (x, y), along the tangent angle in the direction sign (or either way when 0).
+  function emitSparks(x, y, tangent, sign, strength, now) {
+    if (strength < SPARK_MIN_STRENGTH) return;
+    const count = Math.max(1, Math.round(SPARK_COUNT * strength));
+    for (let n = 0; n < count; n += 1) {
+      const i = nextSpark;
+      nextSpark = (nextSpark + 1) % SPARK_POOL;
+      const way = sign || (Math.random() < 0.5 ? -1 : 1);
+      const angle = tangent + (way < 0 ? Math.PI : 0) + random(-SPARK_SPREAD, SPARK_SPREAD);
+      const speed = random(SPARK_SPEED_MIN, SPARK_SPEED_MAX) * (0.6 + 0.4 * strength);
+      sparkX[i] = x;
+      sparkY[i] = y;
+      sparkVX[i] = Math.cos(angle) * speed;
+      sparkVY[i] = Math.sin(angle) * speed;
+      sparkBorn[i] = now;
+      sparkStreak[i] = random(SPARK_STREAK_MIN, SPARK_STREAK_MAX);
+      sparkCount += 1;
+    }
+    burstAt = now;
+    burstWidth = SPARK_SIZE_MIN + (SPARK_SIZE_MAX - SPARK_SIZE_MIN) * strength;
+  }
+
+  // Springs per project slot: displacement, speed and axis angle of the squash and of the stretch, and the smoothed
+  // acceleration with the velocity it was measured from. Positive is flatter along the axis, negative longer.
+  const slots = projects.length;
+  const squash = new Float32Array(slots);
+  const squashSpeed = new Float32Array(slots);
+  const squashAxis = new Float32Array(slots); // angle from the centre toward the contact
+  const stretch = new Float32Array(slots);
+  const stretchSpeed = new Float32Array(slots);
+  const stretchAxis = new Float32Array(slots);
+  const accelX = new Float32Array(slots);
+  const accelY = new Float32Array(slots);
+  const lastVX = new Float32Array(slots);
+  const lastVY = new Float32Array(slots);
+  const touched = new Uint8Array(slots); // a contact this step: its velocity change is a collision, not a drag
+  let lastSpring = 0;
+
+  function kickSquash(body, axis, approach) {
+    const slot = body.plugin.slot;
+    squashAxis[slot] = axis;
+    squash[slot] = Math.min(WOBBLE_MAX, squash[slot] + approach * SQUASH_GAIN);
+  }
+
   // Called before Matter resolves the contact, so the bubble's velocity is still the one it hit with.
-  function addImpact(wall, bubble) {
+  function addImpact(wall, bubble, now) {
     const { side } = wall.plugin;
     const horizontal = side === 'top' || side === 'bottom';
     const speed = horizontal ? bubble.velocity.y : bubble.velocity.x;
     const toward = side === 'top' || side === 'left' ? -speed : speed;
     if (!(toward >= IMPACT_MIN_SPEED)) return;
+    const strength = clamp(toward / IMPACT_FULL_SPEED, IMPACT_MIN_STRENGTH, 1);
     const impact = impacts[nextImpact];
     nextImpact = (nextImpact + 1) % IMPACT_MAX;
     impact.active = true;
     impact.side = side;
     impact.along = horizontal ? bubble.position.x : bubble.position.y;
-    impact.strength = clamp(toward / IMPACT_FULL_SPEED, IMPACT_MIN_STRENGTH, 1);
-    impact.start = performance.now();
+    impact.strength = strength;
+    impact.start = now;
+    impactCount += 1;
+    const geometry = frame.sides[side];
+    if (geometry) {
+      // The sparks run along the wall, the way the bubble was sliding.
+      const slide = horizontal ? bubble.velocity.x : bubble.velocity.y;
+      const x = horizontal ? impact.along : geometry.at;
+      const y = horizontal ? geometry.at : impact.along;
+      emitSparks(x, y, horizontal ? 0 : Math.PI / 2, Math.abs(slide) > 0.3 ? Math.sign(slide) : 0, strength, now);
+      kickSquash(bubble, geometry.normal, toward);
+    }
+  }
+
+  // Two bubbles meeting: sparks at the contact point along the tangent, both squashed toward each other.
+  function addBubbleImpact(bodyA, bodyB, collision, now) {
+    const { normal } = collision;
+    const approach = Math.abs((bodyA.velocity.x - bodyB.velocity.x) * normal.x + (bodyA.velocity.y - bodyB.velocity.y) * normal.y);
+    if (!(approach >= IMPACT_MIN_SPEED)) return;
+    const strength = clamp(approach / IMPACT_FULL_SPEED, IMPACT_MIN_STRENGTH, 1);
+    const support = collision.supports && collision.supports[0];
+    // Without a support point, the contact lies on the line between the centres, at the first one's rim.
+    const toB = Math.atan2(bodyB.position.y - bodyA.position.y, bodyB.position.x - bodyA.position.x);
+    const x = support ? support.x : bodyA.position.x + Math.cos(toB) * bodyA.circleRadius;
+    const y = support ? support.y : bodyA.position.y + Math.sin(toB) * bodyA.circleRadius;
+    emitSparks(x, y, toB + Math.PI / 2, 0, strength, now);
+    kickSquash(bodyA, toB, approach);
+    kickSquash(bodyB, toB + Math.PI, approach);
     impactCount += 1;
   }
 
-  // The travelling light: one dash of the frame's length fraction, its offset moved along the perimeter with time.
-  function drawSegment(context, now) {
-    if (!frame.path) return;
-    context.save();
-    context.globalAlpha = SEGMENT_ALPHA;
-    context.strokeStyle = FRAME_COLOR;
-    context.lineWidth = FRAME_WIDTH;
-    context.lineCap = 'round';
-    context.setLineDash(frame.dash);
-    context.lineDashOffset = -((now / 1000 / SEGMENT_SPEED) % 1) * frame.perimeter;
-    context.stroke(frame.path);
-    context.restore();
-  }
-
-  // Each impact: the side lit around the contact point, growing out to its length while it fades, and a small ring.
+  // Each impact: a short straight line on the wall, centred on the contact point, fading out.
   function drawImpacts(context, now) {
-    context.save();
-    context.strokeStyle = FRAME_COLOR;
-    context.lineWidth = FRAME_WIDTH;
+    context.strokeStyle = IMPACT_COLOR;
+    context.lineWidth = IMPACT_WIDTH;
     context.lineCap = 'round';
-    impacts.forEach((impact) => {
-      if (!impact.active) return;
+    for (let n = 0; n < IMPACT_MAX; n += 1) {
+      const impact = impacts[n];
+      if (!impact.active) continue;
       const t = (now - impact.start) / IMPACT_LIFE_MS;
       if (t >= 1) {
         impact.active = false;
-        return;
+        continue;
       }
       const side = frame.sides[impact.side];
-      if (!side) return;
-      const grow = 1 - (1 - t) ** 3;
-      const half = (IMPACT_LENGTH * impact.strength * grow) / 2;
+      if (!side) continue;
+      const half = (IMPACT_LENGTH_MIN + (IMPACT_LENGTH_MAX - IMPACT_LENGTH_MIN) * impact.strength) / 2;
       const along = clamp(impact.along, side.from, side.to);
       const from = Math.max(side.from, along - half);
       const to = Math.min(side.to, along + half);
@@ -417,12 +501,66 @@ function startPhysics() {
         context.lineTo(side.at, to);
       }
       context.stroke();
-      context.beginPath();
-      if (side.horizontal) context.arc(along, side.at, IMPACT_RING * grow, 0, Math.PI * 2);
-      else context.arc(side.at, along, IMPACT_RING * grow, 0, Math.PI * 2);
-      context.stroke();
-    });
-    context.restore();
+    }
+  }
+
+  // Every live spark moved and added to one path, stroked once.
+  function drawSparks(context, now, dt) {
+    let any = false;
+    context.beginPath();
+    for (let i = 0; i < SPARK_POOL; i += 1) {
+      const t = (now - sparkBorn[i]) / SPARK_LIFE_MS;
+      if (t >= 1 || t < 0) continue;
+      sparkX[i] += sparkVX[i] * dt;
+      sparkY[i] += sparkVY[i] * dt;
+      const speed = Math.hypot(sparkVX[i], sparkVY[i]) || 1;
+      const trail = sparkStreak[i] * (1 - t);
+      context.moveTo(sparkX[i] - (sparkVX[i] / speed) * trail, sparkY[i] - (sparkVY[i] / speed) * trail);
+      context.lineTo(sparkX[i], sparkY[i]);
+      any = true;
+    }
+    if (!any) return;
+    const age = (now - burstAt) / SPARK_LIFE_MS;
+    context.globalAlpha = Math.max(0, 1 - age);
+    context.strokeStyle = age < SPARK_HOT_SHARE ? SPARK_HOT : SPARK_COOL;
+    context.lineWidth = burstWidth;
+    context.lineCap = 'round';
+    context.stroke();
+  }
+
+  // One damped spring step: displacement and speed toward target. Returns nothing; writes the arrays in place.
+  function springStep(position, speed, slot, target, stiffness, damping, dt) {
+    speed[slot] += (-stiffness * (position[slot] - target) - damping * speed[slot]) * dt;
+    position[slot] += speed[slot] * dt;
+    if (position[slot] > WOBBLE_MAX) position[slot] = WOBBLE_MAX;
+    else if (position[slot] < -WOBBLE_MAX) position[slot] = -WOBBLE_MAX;
+    if (target === 0 && Math.abs(position[slot]) < WOBBLE_REST && Math.abs(speed[slot]) < WOBBLE_REST * 10) {
+      position[slot] = 0;
+      speed[slot] = 0;
+    }
+  }
+
+  // Per frame, both springs of every bubble; the stretch is driven by the acceleration measured in afterUpdate.
+  function stepSprings(now) {
+    const dt = Math.min(WOBBLE_DT_MAX, Math.max(0, (now - lastSpring) / 1000));
+    lastSpring = now;
+    if (dt === 0) return;
+    for (let n = 0; n < bubbles.length; n += 1) {
+      const slot = bubbles[n].plugin.slot;
+      springStep(squash, squashSpeed, slot, 0, WOBBLE_STIFFNESS, WOBBLE_DAMPING, dt);
+      const accel = Math.hypot(accelX[slot], accelY[slot]);
+      const target = -Math.min(WOBBLE_MAX, accel * STRETCH_GAIN);
+      if (accel > 1) stretchAxis[slot] = Math.atan2(accelY[slot], accelX[slot]);
+      springStep(stretch, stretchSpeed, slot, target, STRETCH_STIFFNESS, STRETCH_DAMPING, dt);
+    }
+  }
+
+  // Scales by 1 - m along the axis and 1 + m / 2 across it.
+  function deform(context, axis, m) {
+    if (m === 0) return;
+    context.rotate(axis);
+    context.scale(1 - m, 1 + 0.5 * m);
+    context.rotate(-axis);
   }
 
   // All bubbles in their cells, or with onlyMissing just the ones a click removed, next to those still drifting.
@@ -441,12 +579,21 @@ function startPhysics() {
         render: { visible: false }, // drawn from pre-rendered sprites in afterRender
       });
       body.plugin.data = projects[index];
+      body.plugin.slot = index;
+      squash[index] = 0;
+      squashSpeed[index] = 0;
+      stretch[index] = 0;
+      stretchSpeed[index] = 0;
+      accelX[index] = 0;
+      accelY[index] = 0;
       body.plugin.drift = { angle: random(0, Math.PI * 2), until: 0 };
       body.plugin.spin = { until: 0 };
       body.plugin.light = { angle: null };
       const speed = random(0.3, 0.6);
       Body.setVelocity(body, { x: Math.cos(body.plugin.drift.angle) * speed, y: Math.sin(body.plugin.drift.angle) * speed });
       Body.setAngularVelocity(body, random(-ANGULAR_START, ANGULAR_START));
+      lastVX[index] = body.velocity.x;
+      lastVY[index] = body.velocity.y;
       return body;
     }).filter(Boolean);
     bubbles = kept.concat(added);
@@ -463,6 +610,9 @@ function startPhysics() {
     });
   }
 
+  // One vector reused for every force, velocity and position handed to Matter, so a step allocates nothing.
+  const scratch = { x: 0, y: 0 };
+
   // Each bubble is pushed very gently in a direction that changes every 3.5 to 5 seconds.
   // A thrown bubble glides and loses its excess speed over a few seconds, as in a viscous fluid.
   Events.on(engine, 'beforeUpdate', ({ timestamp }) => {
@@ -475,11 +625,15 @@ function startPhysics() {
       const speed = Math.hypot(body.velocity.x, body.velocity.y);
       if (speed <= CRUISE_SPEED * 2) {
         const force = DRIFT_FORCE * body.mass;
-        Body.applyForce(body, body.position, { x: Math.cos(drift.angle) * force, y: Math.sin(drift.angle) * force });
+        scratch.x = Math.cos(drift.angle) * force;
+        scratch.y = Math.sin(drift.angle) * force;
+        Body.applyForce(body, body.position, scratch);
       }
       if (speed > CRUISE_SPEED) {
         const keep = Math.min(THROW_DECAY, SAFETY_SPEED / speed);
-        Body.setVelocity(body, { x: body.velocity.x * keep, y: body.velocity.y * keep });
+        scratch.x = body.velocity.x * keep;
+        scratch.y = body.velocity.y * keep;
+        Body.setVelocity(body, scratch);
       }
 
       // Slow organic spin: the current spin (collisions included) is kept with ANGULAR_DAMPING, a gentle random push
@@ -497,12 +651,73 @@ function startPhysics() {
     });
   });
 
+  // Safety pass after each step: a bubble sunk into a wall by more than CONTAIN_SLACK of its radius (a hard drag can push
+  // it there) is put back against the wall, its speed toward the wall reflected. Counted for the dev hook.
+  let rescues = 0;
+  let escapes = 0;
+
+  function contain(body) {
+    const radius = body.circleRadius;
+    const slack = radius * CONTAIN_SLACK;
+    let { x, y } = body.position;
+    let vx = body.velocity.x;
+    let vy = body.velocity.y;
+    let moved = false;
+    if (x < radius - slack) { x = radius; vx = Math.abs(vx); moved = true; }
+    else if (x > laidWidth - radius + slack) { x = laidWidth - radius; vx = -Math.abs(vx); moved = true; }
+    if (y < radius - slack) { y = radius; vy = Math.abs(vy); moved = true; }
+    else if (y > laidHeight - radius + slack) { y = laidHeight - radius; vy = -Math.abs(vy); moved = true; }
+    if (!moved) return;
+    rescues += 1;
+    scratch.x = x;
+    scratch.y = y;
+    Body.setPosition(body, scratch);
+    scratch.x = vx;
+    scratch.y = vy;
+    Body.setVelocity(body, scratch);
+  }
+
+  // After each step: the safety pass, then the acceleration that drives the stretch, from the change of velocity over
+  // a step without contact (a bounce is the squash's business).
+  Events.on(engine, 'afterUpdate', () => {
+    for (let n = 0; n < bubbles.length; n += 1) {
+      const body = bubbles[n];
+      if (laidWidth > 0) {
+        contain(body);
+        // Still out after the pass (or not a number at all) is an escape: the test expects none.
+        const { x, y } = body.position;
+        const out = body.circleRadius * (1 - CONTAIN_SLACK) - 0.5;
+        if (!(x >= out && x <= laidWidth - out && y >= out && y <= laidHeight - out)) escapes += 1;
+      }
+      const slot = body.plugin.slot;
+      const ax = touched[slot] ? 0 : (body.velocity.x - lastVX[slot]) * STEP_RATE * STEP_RATE;
+      const ay = touched[slot] ? 0 : (body.velocity.y - lastVY[slot]) * STEP_RATE * STEP_RATE;
+      accelX[slot] += (ax - accelX[slot]) * ACCEL_SMOOTHING;
+      accelY[slot] += (ay - accelY[slot]) * ACCEL_SMOOTHING;
+      lastVX[slot] = body.velocity.x;
+      lastVY[slot] = body.velocity.y;
+      touched[slot] = 0;
+    }
+  });
+
+  function markTouched({ pairs }) {
+    for (let n = 0; n < pairs.length; n += 1) {
+      const { bodyA, bodyB } = pairs[n];
+      if (bodyA.plugin.data) touched[bodyA.plugin.slot] = 1;
+      if (bodyB.plugin.data) touched[bodyB.plugin.slot] = 1;
+    }
+  }
+  Events.on(engine, 'collisionActive', markTouched);
+
   // At these speeds Matter treats a contact as resting, so the drift turns away from whatever was touched.
-  // A bubble meeting a wall also lights that side of the frame.
-  Events.on(engine, 'collisionStart', ({ pairs }) => {
-    pairs.forEach(({ bodyA, bodyB, collision }) => {
-      if (bodyA.plugin.side && bodyB.plugin.data) addImpact(bodyA, bodyB);
-      else if (bodyB.plugin.side && bodyA.plugin.data) addImpact(bodyB, bodyA);
+  // A bubble meeting a wall leaves a line on it; two bubbles meeting throw sparks; either way they squash.
+  Events.on(engine, 'collisionStart', (event) => {
+    markTouched(event);
+    const now = performance.now();
+    event.pairs.forEach(({ bodyA, bodyB, collision }) => {
+      if (bodyA.plugin.side && bodyB.plugin.data) addImpact(bodyA, bodyB, now);
+      else if (bodyB.plugin.side && bodyA.plugin.data) addImpact(bodyB, bodyA, now);
+      else if (bodyA.plugin.data && bodyB.plugin.data) addBubbleImpact(bodyA, bodyB, collision, now);
       const away = Math.atan2(collision.normal.y, collision.normal.x);
       if (bodyA.plugin.drift) bodyA.plugin.drift.angle = away + random(-0.6, 0.6);
       if (bodyB.plugin.drift) bodyB.plugin.drift.angle = away + Math.PI + random(-0.6, 0.6);
@@ -567,32 +782,42 @@ function startPhysics() {
     return light.angle;
   }
 
-  // Per frame: the travelling light, then per bubble its body, logo turned by the body angle, the glint turned toward
-  // the light and the label, which never turns; the impacts last, so a bubble resting on the lit side never hides its ring.
+  // Per frame: per bubble its body and its logo (turned by the body angle) under the two deformations, the squash
+  // anchored so the side that was hit stays against the wall; then the glint, turned toward the light but never
+  // deformed, and the label, which never turns; the impacts and sparks last, so a bubble never hides them.
+  let lastDraw = 0;
   Events.on(render, 'afterRender', () => {
     const context = render.context;
     const ratio = render.options.pixelRatio;
     const now = performance.now();
+    const dt = Math.min(WOBBLE_DT_MAX, Math.max(0, (now - lastDraw) / 1000));
+    lastDraw = now;
+    stepSprings(now);
     context.save();
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    drawSegment(context, now);
-    bubbles.forEach((body) => {
+    for (let n = 0; n < bubbles.length; n += 1) {
+      const body = bubbles[n];
       const { slug, logo } = body.plugin.data;
       const set = sprites.get(slug);
-      if (!set) return;
-      const { x, y } = body.position;
+      if (!set) continue;
+      const slot = body.plugin.slot;
       const radius = body.circleRadius;
+      const anchor = squash[slot] * radius;
+      const x = body.position.x + Math.cos(squashAxis[slot]) * anchor;
+      const y = body.position.y + Math.sin(squashAxis[slot]) * anchor;
       const outer = radius + GLOW_SIZE;
-      context.drawImage(set.body, x - outer, y - outer, 2 * outer, 2 * outer);
+      context.save();
+      context.translate(x, y);
+      deform(context, squashAxis[slot], squash[slot]);
+      deform(context, stretchAxis[slot], stretch[slot]);
+      context.drawImage(set.body, -outer, -outer, 2 * outer, 2 * outer);
       if (set.logo) {
         const half = radius * LOGO_SHARE;
-        context.save();
-        context.translate(x, y);
         context.rotate(body.angle);
         context.globalCompositeOperation = logo.blend;
         context.drawImage(set.logo, -half, -half, 2 * half, 2 * half);
-        context.restore();
       }
+      context.restore();
       const { highlight } = set;
       context.save();
       context.translate(x, y);
@@ -600,9 +825,10 @@ function startPhysics() {
       context.drawImage(highlight.canvas, radius * HIGHLIGHT_DISTANCE - highlight.width / 2, -highlight.height / 2, highlight.width, highlight.height);
       context.restore();
       const { label } = set;
-      context.drawImage(label.canvas, x - label.width / 2, y + radius + LABEL_GAP - label.height / 2, label.width, label.height);
-    });
+      context.drawImage(label.canvas, body.position.x - label.width / 2, body.position.y + radius + LABEL_GAP - label.height / 2, label.width, label.height);
+    }
     drawImpacts(context, now);
+    drawSparks(context, now, dt);
     context.restore();
   });
 
@@ -694,8 +920,18 @@ function startPhysics() {
     },
   });
 
-  // Dev server only (Vite drops this from the build): lets a test pin a bubble and count the impacts.
-  if (import.meta.env.DEV) window.__bubbleDebug = { Body, bubbles: () => bubbles, impacts: () => impactCount, pool: impacts };
+  // Dev server only (Vite drops this from the build): lets a test pin a bubble and count impacts, sparks and rescues.
+  if (import.meta.env.DEV) {
+    window.__bubbleDebug = {
+      Body,
+      bubbles: () => bubbles,
+      impacts: () => impactCount,
+      sparks: () => sparkCount,
+      pool: impacts,
+      contained: () => ({ rescues, escapes, width: laidWidth, height: laidHeight }),
+      wobble: () => bubbles.map((body) => ({ squash: squash[body.plugin.slot], stretch: stretch[body.plugin.slot] })),
+    };
+  }
 }
 
 // Reduced motion: no physics loop, the bubbles are plain buttons at the centre of their cells, with the same cropped logo.

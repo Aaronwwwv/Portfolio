@@ -198,7 +198,7 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 .exp-title { font: 700 clamp(22px, 0.9rem + 0.9vw, 36px)/1.2 var(--display); letter-spacing: 0.01em; }
 .exp-date { font: 400 clamp(13px, 0.7rem + 0.25vw, 17px)/1.5 var(--mono); color: #BDB194; } /* 8.8:1 on the link background */
 
-/* No visible box: projects-bubbles.js draws the frame on its canvas, a travelling light and the sides the bubbles hit */
+/* No visible box: the frame is invisible, projects-bubbles.js only draws a short line where a bubble hits a wall, and sparks */
 #bubble-stage { position: relative; width: 100%; height: 80svh; min-height: 560px; margin-top: 24px; overflow: hidden; }
 #bubble-canvas { display: block; }
 /* Reduced motion: the same bubbles as static buttons */
