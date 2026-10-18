@@ -144,10 +144,10 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 #theme-orbs span:nth-child(3) { left: 15vmax; bottom: -35vmax; background: radial-gradient(circle, rgba(59, 26, 143, 0.5), transparent 65%); animation-duration: 41s; animation-delay: -9s; }
 @keyframes orb-drift { 0% { transform: translate(0, 0); } 50% { transform: translate(9vmax, 6vmax); } 100% { transform: translate(-6vmax, 10vmax); } }
 
-/* RUGTRAAK glass: the text and the ledger float over the halos and the contour lines */
-[data-theme="rugtraak"] .detail-page .text, [data-theme="rugtraak"] .detail-page .ledger { background: rgba(10, 8, 28, 0.62); -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%); border: 1px solid var(--edge-color); border-radius: 20px; box-shadow: inset 0 1px 0 var(--edge-color), 0 8px 32px var(--shadow-color); padding: clamp(20px, 2.4vw, 40px); }
+/* RUGTRAAK glass: each card floats over the halos and the contour lines; its shadow still follows the tilt */
+[data-theme="rugtraak"] .detail-page .card { background: rgba(10, 8, 28, 0.62); -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%); border: 1px solid var(--edge-color); border-radius: 20px; box-shadow: inset 0 1px 0 var(--edge-color), var(--shadow-x) calc(8px + var(--shadow-y)) 32px var(--shadow-color); }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  [data-theme="rugtraak"] .detail-page .text, [data-theme="rugtraak"] .detail-page .ledger { background: rgba(10, 8, 28, 0.92); }
+  [data-theme="rugtraak"] .detail-page .card { background: rgba(10, 8, 28, 0.92); }
 }
 /* The docked particles orbit inside the blob: on this page the swarm and the blob go above the panels (still inert) */
 [data-theme="rugtraak"] #swarm-canvas, [data-theme="rugtraak"] #cursor-blob { z-index: 6; }
@@ -235,21 +235,25 @@ button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--
   .exp-link:hover { border-color: rgba(201, 169, 106, 0.6); }
   button.back:hover { border-color: var(--accent); }
 }
-.detail { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 28px; align-self: center; }
-.detail .text { min-width: 0; display: grid; gap: 12px; align-content: start; }
-.detail h2 { font-size: clamp(28px, 1.2rem + 1.6vw, 52px); }
-.detail h3 { font-size: clamp(19px, 0.85rem + 0.6vw, 28px); margin-top: 10px; }
-.detail p { margin: 0; max-width: var(--measure); }
-/* Wide screens: the text in two columns, a heading never left at the foot of a column, the ledger a wide sidebar */
+/* Detail pages: the content in 3 to 5 cards, one under the other, each indented a little more or less than the one
+   above. From 1024px they form a staircase: 58 % wide, alternately 6 % and 36 % from the left (an offset of 30 %),
+   each step overlapping the one above by --card-overlap. The overlap only ever covers the bottom padding of the card
+   above, which is that much taller, so no text hides under a step. cards.js tilts them toward the paint blob. */
+/* Text at 17px and lines up to 72ch: the longest pages stay as short as they can without cutting anything */
+.detail { --card-overlap: 0px; --card-pad: 16px; --card-pad-x: 18px; display: grid; grid-template-columns: minmax(0, 1fr); align-self: center; font-size: 17px; line-height: 1.5; }
+.detail h2 { font-size: clamp(28px, 1.1rem + 1.3vw, 44px); line-height: 1.15; }
+.detail h3 { font-size: clamp(19px, 0.8rem + 0.4vw, 24px); line-height: 1.25; margin-top: 4px; }
+.detail p { margin: 0; max-width: 72ch; }
+.detail .card { position: relative; width: 94%; display: grid; gap: 6px; align-content: start; min-width: 0; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; padding: var(--card-pad) var(--card-pad-x) calc(var(--card-pad) + var(--card-overlap)); box-shadow: var(--shadow-x) calc(8px + var(--shadow-y)) 24px var(--shadow-color), inset 0 1px 0 var(--edge-color); transition: translate 0.2s ease; }
+.detail .card + .card { margin-top: calc(10px - var(--card-overlap)); }
+.detail .card:nth-child(even) { margin-left: 6%; }
+.detail .card > h2 + .meta { margin-bottom: 4px; }
+/* Keyboard focus inside a card: a small fixed lift, on top of whatever tilt is applied */
+.detail .card:focus-within { translate: 0 -4px; }
 @media (min-width: 1024px) {
-  .detail { grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 440px); gap: clamp(32px, 4vw, 80px); }
-  .detail:not(:has(.ledger)) { grid-template-columns: minmax(0, 1fr); }
-  .detail .text { display: block; columns: 2; column-gap: clamp(32px, 4vw, 80px); }
-  .detail .text > * { break-inside: avoid; margin-top: 12px; }
-  .detail .text > :first-child { margin-top: 0; }
-  .detail .text > h2, .detail .text > .meta { column-span: all; }
-  .detail .text > h3 { break-after: avoid; margin-top: 26px; }
-  .detail .text > .meta + h3 { margin-top: 18px; }
+  .detail { --card-overlap: min(3vh, 24px); --card-pad: clamp(14px, 1vw, 22px); --card-pad-x: clamp(20px, 1.7vw, 30px); }
+  .detail .card { width: 58%; margin-left: 6%; }
+  .detail .card:nth-child(even) { margin-left: 36%; }
 }
 .ledger { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; align-self: start; display: grid; gap: 12px; min-width: 0; box-shadow: 0 6px 20px var(--shadow-color), inset 0 1px 0 var(--edge-color); }
 .ledger dl { margin: 0; display: grid; gap: 10px; }
@@ -257,6 +261,8 @@ button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--
 .ledger dt { font-size: clamp(13px, 0.7rem + 0.25vw, 17px); color: var(--muted); }
 .ledger dd { margin: 0; font: 500 clamp(20px, 0.9rem + 0.7vw, 32px)/1.2 var(--mono); font-variant-numeric: tabular-nums; color: var(--accent-text); }
 .ledger dd small { font: 400 12px var(--body); color: var(--muted); margin-left: 4px; }
+/* As a card, the ledger lays its figures side by side */
+.detail .card.ledger dl { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 12px 24px; }
 
 .status { display: grid; gap: 8px; margin-top: 4px; }
 .status-row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; font-size: 15px; }
@@ -279,7 +285,6 @@ button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--
 
 @media (max-width: 760px) {
   :root { --page-bottom: 56px; }
-  .detail { grid-template-columns: minmax(0, 1fr); }
   .small-grid { grid-template-columns: minmax(0, 1fr); }
   .wrap, .stack { gap: 40px; }
   .contact-list { grid-template-columns: minmax(0, 1fr); align-content: start; }
