@@ -15,9 +15,64 @@ const LOGOS = {
 const BADGE_SIZE = 112; // px, side of the cropped badge: twice the 56 px desktop badge
 const TILT_MAX = 8; // deg, on each axis
 const SHADOW_SHIFT = 10; // px, how far the shadow moves away from the tilt at full tilt
-const SHADOW_DROP = 10; // px, vertical offset of the shadow on a flat link
 const FOLLOW = 0.12; // share of the distance to the target tilt covered per frame at 60 fps
 const SETTLED = 0.01; // deg, below this the tilt snaps to its target
+const PERSPECTIVE = 800; // px
+
+// Writes a tilt and the shadow shift of one element. The transform and the registered --shadow-x / --shadow-y of
+// style.css are CSS Typed OM objects made once and changed in place, so no string is built per frame; browsers without
+// Typed OM get strings instead. set() takes degrees and px; clear() hands the element back to its stylesheet.
+export function tiltWriter(element, perspective) {
+  const map = element.attributeStyleMap;
+  if (map && typeof CSSPerspective === 'function') {
+    const rotateX = new CSSRotate(1, 0, 0, CSS.deg(0));
+    const rotateY = new CSSRotate(0, 1, 0, CSS.deg(0));
+    const transform = new CSSTransformValue([new CSSPerspective(CSS.px(perspective)), rotateX, rotateY]);
+    const shiftX = CSS.px(0);
+    const shiftY = CSS.px(0);
+    let typedShadow = true;
+    try {
+      map.set('--shadow-x', shiftX);
+      map.delete('--shadow-x');
+    } catch {
+      typedShadow = false;
+    }
+    return {
+      set(rx, ry, sx, sy) {
+        rotateX.angle.value = rx;
+        rotateY.angle.value = ry;
+        map.set('transform', transform);
+        if (typedShadow) {
+          shiftX.value = sx;
+          shiftY.value = sy;
+          map.set('--shadow-x', shiftX);
+          map.set('--shadow-y', shiftY);
+        } else {
+          element.style.setProperty('--shadow-x', `${sx}px`);
+          element.style.setProperty('--shadow-y', `${sy}px`);
+        }
+      },
+      clear() {
+        map.delete('transform');
+        map.delete('--shadow-x');
+        map.delete('--shadow-y');
+      },
+    };
+  }
+  const { style } = element;
+  return {
+    set(rx, ry, sx, sy) {
+      style.transform = `perspective(${perspective}px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+      style.setProperty('--shadow-x', `${sx}px`);
+      style.setProperty('--shadow-y', `${sy}px`);
+    },
+    clear() {
+      style.transform = '';
+      style.removeProperty('--shadow-x');
+      style.removeProperty('--shadow-y');
+    },
+  };
+}
 
 const stairs = document.querySelector('.exp-stairs');
 const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
@@ -45,7 +100,7 @@ stairs.querySelectorAll('.exp-badge').forEach((badge) => {
 });
 
 // Tilt per link: rx, ry the current angles, tx, ty the targets; rect is the floating step, read outside the frame loop.
-const cards = [...stairs.querySelectorAll('.exp-link')].map((link) => ({ link, step: link.parentElement, rect: null, rx: 0, ry: 0, tx: 0, ty: 0 }));
+const cards = [...stairs.querySelectorAll('.exp-link')].map((link) => ({ link, step: link.parentElement, rect: null, rx: 0, ry: 0, tx: 0, ty: 0, writer: tiltWriter(link, PERSPECTIVE) }));
 let moving = false;
 
 function measure() {
@@ -82,17 +137,12 @@ function tick(time, deltaTime) {
     } else {
       moving = true;
     }
-    const { style } = card.link;
     if (card.rx === 0 && card.ry === 0) {
-      style.transform = '';
-      style.boxShadow = '';
+      card.writer.clear();
       return;
     }
-    // The shadow slides opposite to the tilt: away from the side that sinks.
-    const shadowX = (-card.ry / TILT_MAX) * SHADOW_SHIFT;
-    const shadowY = SHADOW_DROP + (card.rx / TILT_MAX) * SHADOW_SHIFT;
-    style.transform = `perspective(800px) rotateX(${card.rx.toFixed(2)}deg) rotateY(${card.ry.toFixed(2)}deg)`;
-    style.boxShadow = `${shadowX.toFixed(1)}px ${shadowY.toFixed(1)}px 28px rgba(0, 0, 0, 0.55)`;
+    // The shadow slides opposite to the tilt: away from the side that sinks. style.css adds the resting drop.
+    card.writer.set(card.rx, card.ry, (-card.ry / TILT_MAX) * SHADOW_SHIFT, (card.rx / TILT_MAX) * SHADOW_SHIFT);
   });
 }
 

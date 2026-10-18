@@ -102,7 +102,7 @@ const WARP_RESPAWN_R = 40; // px, a forward star leaving the viewport comes back
 const WARP_ARRIVE_R = 24; // px, an inbound star this close to the origin comes back at the rim
 const WARP_CLASS = 'is-warp'; // on the canvas during a warp: style.css drops the background blur in 0.3 s
 // Absorbed: on these themes, once the title has been held, every particle flies into the paint blob and docks there.
-const ABSORB_THEMES = ['rugtraak'];
+const ABSORB_THEMES = ['rugtraak', 'sqkeys', 'admp'];
 const BLOB_ORBIT_R = 8; // px, each particle aims at its own fixed point within this of the blob centre
 const ABSORB_DELAY_MAX = 0.9; // s, start delays are spread between 0 and this
 const ABSORB_FLIGHT_MIN = 0.9; // s, each flight

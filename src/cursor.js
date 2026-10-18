@@ -4,8 +4,8 @@ import gsap from 'gsap';
 // and swells over anything clickable. The real cursor stays visible. Fine pointers only, never under reduced motion.
 // cursorState is shared with the swarm and the RUGTRAAK contour lines, which read the blob, not the raw pointer.
 const CURSOR_SIZE = 22; // px, diameter at rest; style.css draws the blob at this size
-const CURSOR_FOLLOW = 0.14; // share of the distance to the pointer covered per frame at 60 fps, at rest
-const CURSOR_VISCOSITY = 0.045; // the follow share is divided by 1 + this * pointer speed (px per frame)
+const CURSOR_FOLLOW = 0.2; // share of the distance to the pointer covered per frame at 60 fps, at rest
+const CURSOR_VISCOSITY = 0.029; // the follow share is divided by 1 + this * pointer speed (px per frame)
 const CURSOR_SPEED_SMOOTHING = 0.25; // share of a new pointer speed reading taken per frame
 const CURSOR_STRETCH_MAX = 1.5; // longest stretch along the motion
 const CURSOR_STRETCH_GAIN = 0.03; // stretch per px per frame of blob speed

@@ -9,5 +9,7 @@ import './sections.js';
 import './themes.js';
 import './projects-bubbles.js';
 import './experience.js';
+import './cards.js';
+import './strings.js';
 
 initSwarm();

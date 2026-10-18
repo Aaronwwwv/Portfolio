@@ -1,34 +1,39 @@
 import gsap from 'gsap';
 import { createNoise3D } from 'simplex-noise';
+import { cursorState } from './cursor.js';
 import { topo } from './topo.js';
 
 // Background effects of the themed detail pages, on one fixed canvas under the swarm. Each effect is drawn only while its
 // theme is set on <html>, from the shared gsap.ticker; everything it draws is laid out on show and resize, never per frame.
-// sqkeys: a halftone grid whose dots swell and shrink with a slow noise field.
+// sqkeys: a halftone grid whose dots swell and shrink with a slow noise field, and grow around the paint blob.
 // admp: a fan of random-walk price paths, each drawn from left to right, then faded and redrawn from the next seed.
 // rugtraak: contour lines of a moving relief that rises under the paint blob (topo.js), behind its glass panels.
-// An effect may set its own canvas opacity, reading-column mask and pixel ratio cap; the defaults suit the first two.
+// The text of these pages sits on opaque cards (or glass, on rugtraak) and the back button on the paper, so the effects
+// run across the whole page. An effect may set its own canvas opacity and pixel ratio cap.
 const SMALL_SCREEN = 760; // px, below this width every count is halved (decided once, at load)
 const MAX_DPR = 2;
 const FADE_MS = 500; // canvas fade when an effect starts or stops, matching the paper crossfade
-// The canvas itself is shown at this opacity, so overlapping strokes can never add up past it; the alphas below are the
-// visible ones and are divided by it when drawing.
+// By default the canvas is shown at this opacity, so overlapping strokes can never add up past it; the alphas below are
+// the visible ones and are divided by it when drawing.
 const EFFECT_OPACITY = 0.3;
-// Under the reading column the effect keeps only this share, so every text colour stays at 7:1 or more over it.
-const COLUMN_KEEP = 0.25;
-const COLUMN_EDGE = 72; // px, soft edge of the column on each side
 const TAU = Math.PI * 2;
 
-const HALFTONE_COLUMNS = 36;
-const HALFTONE_ROWS = 20;
-const HALFTONE_SMALL_COLUMNS = 24;
-const HALFTONE_SMALL_ROWS = 14;
-const HALFTONE_COLOR = '#F85830'; // Swissquote orange, from the logo
-const HALFTONE_ALPHA = 0.16;
-const HALFTONE_MAX_RADIUS = 0.36; // largest dot radius, as a share of the cell
+// Halftone: a regular grid, dot sizes from the noise; near the blob the dots grow and brighten. Drawn at full canvas
+// opacity, in one fill for the plain dots and one per brightness band of the halo.
+const HALFTONE_COLUMNS = 40;
+const HALFTONE_ROWS = 22;
+const HALFTONE_SMALL_COLUMNS = 26;
+const HALFTONE_SMALL_ROWS = 15;
+const HALFTONE_COLOR = '#FD5D32'; // Swissquote orange, from the logo
+const HALFTONE_ALPHA = 0.35; // every dot outside the halo
+const HALFTONE_HALO_ALPHA = 0.5; // at the blob centre; the one place a decoration goes past 0.35
+const HALFTONE_HALO_BANDS = 4; // halo brightness steps, one fill each
+const HALFTONE_MAX_RADIUS = 0.34; // largest dot radius from the noise, as a share of the cell
+const HALFTONE_HALO_GROW = 0.16; // extra radius at the blob centre, as a share of the cell
 const HALFTONE_MIN_RADIUS = 0.6; // px, smaller dots are skipped
 const HALFTONE_NOISE_SCALE = 0.12; // noise frequency, per cell
 const HALFTONE_NOISE_SPEED = 0.06; // noise evolution, per second
+const CURSOR_HALO_R = 200; // px around the blob where the dots grow
 
 const PATH_COUNT = 14;
 const PATH_POINTS = 200;
@@ -56,7 +61,6 @@ let context = null;
 let width = 0;
 let height = 0;
 let effect = null; // the effect drawing now, or null
-let mask = null; // the reading column, pre-rendered on resize and erased from each frame
 let fadeTimer = 0;
 
 // Seeded generator (mulberry32): the same seed always gives the same path.
@@ -72,16 +76,26 @@ function seeded(seed) {
 }
 
 const halftone = {
-  columns: small ? HALFTONE_SMALL_COLUMNS : HALFTONE_COLUMNS,
-  rows: small ? HALFTONE_SMALL_ROWS : HALFTONE_ROWS,
-  x: null, // dot centres in CSS px, and the radius ceiling, set on layout
+  opacity: 1,
+  columns: 0, // the larger count runs along the longer side of the viewport, so the cells stay close to square
+  rows: 0,
+  x: null, // dot centres in CSS px, the radius ceiling and the halo growth, set on layout
   y: null,
+  radius: null, // this frame's radius per dot, and its halo band (0 outside the halo)
+  band: null,
   maxRadius: 0,
+  haloGrow: 0,
   layout() {
+    const many = small ? HALFTONE_SMALL_COLUMNS : HALFTONE_COLUMNS;
+    const few = small ? HALFTONE_SMALL_ROWS : HALFTONE_ROWS;
+    this.columns = width >= height ? many : few;
+    this.rows = width >= height ? few : many;
     const count = this.columns * this.rows;
     if (!this.x) {
       this.x = new Float32Array(count);
       this.y = new Float32Array(count);
+      this.radius = new Float32Array(count);
+      this.band = new Uint8Array(count);
     }
     const cellX = width / this.columns;
     const cellY = height / this.rows;
@@ -92,27 +106,54 @@ const halftone = {
         this.y[index] = (row + 0.5) * cellY;
       }
     }
-    this.maxRadius = Math.min(cellX, cellY) * HALFTONE_MAX_RADIUS;
+    const cellSize = Math.min(cellX, cellY);
+    this.maxRadius = cellSize * HALFTONE_MAX_RADIUS;
+    this.haloGrow = cellSize * HALFTONE_HALO_GROW;
   },
   start() {},
   draw(time) {
     const z = time * HALFTONE_NOISE_SPEED;
-    context.globalAlpha = HALFTONE_ALPHA / EFFECT_OPACITY;
+    const count = this.columns * this.rows;
+    // The halo follows the blob while there is one, or while particles are still docked in it.
+    const halo = cursorState.active || cursorState.charge > 0;
+    const haloR2 = CURSOR_HALO_R * CURSOR_HALO_R;
+    for (let index = 0; index < count; index += 1) {
+      const column = index % this.columns;
+      const row = (index - column) / this.columns;
+      const level = 0.5 + 0.5 * noise3D(column * HALFTONE_NOISE_SCALE, row * HALFTONE_NOISE_SCALE, z);
+      let radius = this.maxRadius * level * level;
+      let band = 0;
+      if (halo) {
+        const dx = this.x[index] - cursorState.x;
+        const dy = this.y[index] - cursorState.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < haloR2) {
+          const near = 1 - Math.sqrt(d2) / CURSOR_HALO_R;
+          const eased = near * near * (3 - 2 * near);
+          radius += this.haloGrow * eased;
+          band = Math.min(HALFTONE_HALO_BANDS, 1 + Math.floor(eased * HALFTONE_HALO_BANDS));
+        }
+      }
+      this.radius[index] = radius;
+      this.band[index] = band;
+    }
     context.fillStyle = HALFTONE_COLOR;
-    context.beginPath();
-    for (let row = 0; row < this.rows; row += 1) {
-      for (let column = 0; column < this.columns; column += 1) {
-        const index = row * this.columns + column;
-        const level = 0.5 + 0.5 * noise3D(column * HALFTONE_NOISE_SCALE, row * HALFTONE_NOISE_SCALE, z);
-        const radius = this.maxRadius * level * level;
+    for (let band = 0; band <= HALFTONE_HALO_BANDS; band += 1) {
+      context.globalAlpha = HALFTONE_ALPHA + ((HALFTONE_HALO_ALPHA - HALFTONE_ALPHA) * band) / HALFTONE_HALO_BANDS;
+      context.beginPath();
+      let any = false;
+      for (let index = 0; index < count; index += 1) {
+        if (this.band[index] !== band) continue;
+        const radius = this.radius[index];
         if (radius < HALFTONE_MIN_RADIUS) continue;
         const x = this.x[index];
         const y = this.y[index];
         context.moveTo(x + radius, y);
         context.arc(x, y, radius, 0, TAU);
+        any = true;
       }
+      if (any) context.fill();
     }
-    context.fill();
   },
 };
 
@@ -189,7 +230,6 @@ const paths = {
 
 const EFFECTS = { sqkeys: halftone, admp: paths, rugtraak: topo };
 const opacityOf = (each) => each.opacity ?? EFFECT_OPACITY;
-const maskedOf = (each) => each.masked ?? true;
 const ratioFor = (each) => Math.min(window.devicePixelRatio || 1, each?.maxDpr ?? MAX_DPR);
 let ratio = 0; // pixel ratio the canvas was last sized at
 
@@ -201,30 +241,6 @@ function resize() {
   canvas.height = Math.round(height * ratio);
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
   Object.values(EFFECTS).forEach((each) => each.layout(width, height));
-  buildMask(ratio);
-}
-
-// The text column of <main>, inside its side padding, with soft edges: what tick() erases from the effect under the text.
-function buildMask(ratio) {
-  const main = document.querySelector('main');
-  const box = main.getBoundingClientRect();
-  const padding = parseFloat(getComputedStyle(main).paddingLeft) || 0;
-  const left = Math.max(0, box.left + padding - COLUMN_EDGE);
-  const right = Math.min(width, box.right - padding + COLUMN_EDGE);
-  mask = mask || document.createElement('canvas');
-  mask.width = canvas.width;
-  mask.height = canvas.height;
-  const target = mask.getContext('2d');
-  target.setTransform(ratio, 0, 0, ratio, 0, 0);
-  const fade = target.createLinearGradient(left, 0, right, 0);
-  const edge = Math.min(0.5, COLUMN_EDGE / Math.max(1, right - left));
-  const erase = `rgba(0, 0, 0, ${1 - COLUMN_KEEP})`;
-  fade.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  fade.addColorStop(edge, erase);
-  fade.addColorStop(1 - edge, erase);
-  fade.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  target.fillStyle = fade;
-  target.fillRect(left, 0, right - left, height);
 }
 
 function tick(time) {
@@ -232,12 +248,6 @@ function tick(time) {
   context.clearRect(0, 0, width, height);
   context.save();
   effect.draw(time);
-  if (maskedOf(effect)) {
-    context.globalAlpha = 1;
-    context.globalCompositeOperation = 'destination-out';
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.drawImage(mask, 0, 0);
-  }
   context.restore();
 }
 

@@ -40,7 +40,8 @@
     <h2 class="sr-only">À propos de moi</h2>
     <div id="parcours-liste" class="stack">
       <div>
-        <div class="section-head"><h2>Formation</h2></div>
+        <div class="section-head has-string"><h2>Formation</h2></div>
+        <div class="rule" data-string aria-hidden="true"></div>
         <article class="entry">
           <h3>Double Diplôme Ingénieur &amp; Manager, ESILV &amp; EMLV</h3>
           <div class="meta">Sept. 2023 à aujourd'hui · Paris La Défense</div>
@@ -49,6 +50,7 @@
             <li>Cours : modélisation financière, gestion des risques, statistiques, analyse fonctionnelle</li>
           </ul>
         </article>
+        <div class="rule is-line" data-string aria-hidden="true"></div>
         <article class="entry">
           <h3>Semestre d'échange, Kasetsart University</h3>
           <div class="meta">Août à déc. 2025 · Bangkok, Thaïlande</div>
@@ -56,6 +58,7 @@
             <li>Cours en anglais : probabilités et statistiques, algorithmique, machine learning</li>
           </ul>
         </article>
+        <div class="rule is-line" data-string aria-hidden="true"></div>
         <article class="entry">
           <h3>Baccalauréat Scientifique, Institut Notre-Dame</h3>
           <div class="meta">Juin 2023 · Meudon</div>
@@ -66,7 +69,8 @@
       </div>
 
       <div>
-        <div class="section-head"><h2>Expérience professionnelle</h2></div>
+        <div class="section-head has-string"><h2>Expérience professionnelle</h2></div>
+        <div class="rule" data-string aria-hidden="true"></div>
         <ul class="exp-stairs">
           <li class="exp-step">
             <a class="exp-link" href="#parcours/mercor">
@@ -96,16 +100,18 @@
     <section id="exp-mercor" class="detail-page" hidden>
       <button type="button" class="back">Retour au parcours</button>
       <article class="detail">
-        <div class="text">
+        <div class="card">
           <h2 class="swarm-title-text">Mercor</h2>
           <div class="meta">Mercor Intelligence, San Francisco (distanciel) · août à sept. 2026</div>
 
           <h3>Mission</h3>
           <p>Évaluation et notation de contenus générés par des modèles d'IA, sur la base de grilles de qualité détaillées. Identification des erreurs récurrentes (imprécisions factuelles, raisonnements vagues) et rédaction d'un retour argumenté sur chaque cas.</p>
-
+        </div>
+        <div class="card">
           <h3>Cadre</h3>
           <p>Recrutement à l'issue d'un processus de sélection international, avec entretien en anglais. La collaboration s'est terminée en septembre 2026, à l'initiative de la plateforme.</p>
-
+        </div>
+        <div class="card">
           <h3>Compétences mobilisées</h3>
           <p>Évaluation rigoureuse selon une grille ; détection d'erreurs factuelles et de raisonnement ; rédaction de retours argumentés.</p>
         </div>
@@ -115,20 +121,22 @@
     <section id="exp-auxiga" class="detail-page" hidden>
       <button type="button" class="back">Retour au parcours</button>
       <article class="detail">
-        <div class="text">
+        <div class="card">
           <h2 class="swarm-title-text">Auxiga</h2>
           <div class="meta">Auxiga, Boulogne-Billancourt · juin 2024 à déc. 2025</div>
 
           <h3>Mission</h3>
           <p>Gestionnaire back office : suivi de la performance des équipes, reporting et gestion d'une base de données mise à jour en temps réel, en lien avec les équipes commerciales et bancaires.</p>
-
+        </div>
+        <div class="card">
           <h3>Réalisations</h3>
           <p>Outil VBA calculant en un clic les taux de performance des équipes, en remplacement d'un traitement manuel de 30 minutes. Outils de reporting qui ont réduit le temps de reporting de 15 à 5 minutes par collaborateur.</p>
-
+        </div>
+        <div class="card">
           <h3>Compétences mobilisées</h3>
           <p>VBA et automatisation ; reporting ; gestion de données ; coordination avec des équipes commerciales et bancaires.</p>
         </div>
-        <aside class="ledger" aria-label="Chiffres Auxiga">
+        <aside class="card ledger" aria-label="Chiffres Auxiga">
           <span class="label">Chiffres</span>
           <dl>
             <div><dt>Taux de performance des équipes</dt><dd>30 min → 1 clic</dd></div>
@@ -141,20 +149,22 @@
     <section id="exp-tutorat" class="detail-page" hidden>
       <button type="button" class="back">Retour au parcours</button>
       <article class="detail">
-        <div class="text">
+        <div class="card">
           <h2 class="swarm-title-text">Aaron Tutorat</h2>
           <div class="meta">Indépendant, Île-de-France · depuis septembre 2023</div>
 
           <h3>Activité</h3>
           <p>Plus de 3 ans de cours particuliers de mathématiques et de physique-chimie, pour environ 10 élèves du collège au post-bac (brevet, bac, concours).</p>
-
+        </div>
+        <div class="card">
           <h3>Réalisation</h3>
           <p>Conception et déploiement d'un site Next.js permettant aux élèves de réserver des cours et des stages intensifs.</p>
-
+        </div>
+        <div class="card">
           <h3>Compétences mobilisées</h3>
           <p>Pédagogie et préparation de cours ; développement web (Next.js) ; organisation et relation avec les élèves et leurs familles.</p>
         </div>
-        <aside class="ledger" aria-label="Chiffres Aaron Tutorat">
+        <aside class="card ledger" aria-label="Chiffres Aaron Tutorat">
           <span class="label">Chiffres</span>
           <dl>
             <div><dt>Cours particuliers</dt><dd>plus de 3 ans</dd></div>
@@ -198,7 +208,7 @@
     <section id="projet-rugtraak" class="detail-page" hidden>
       <button type="button" class="back">Retour aux projets</button>
       <article class="detail">
-        <div class="text">
+        <div class="card">
           <h2>RUGTRAAK</h2>
           <div class="meta">2026 à aujourd'hui · Node.js, PostgreSQL (Supabase), React, TypeScript, Telegram</div>
 
@@ -207,14 +217,16 @@
 
           <h3>Collecte des données</h3>
           <p>Un bot surveille 22 wallets répartis en 6 groupes et enregistre chaque token alerté dans une base PostgreSQL : 913 cas pour les trois groupes principaux au 13 octobre 2026. Le plus haut historique de chaque token est recalculé à partir des événements de la blockchain, à 0,13 % près de la source de référence sur 10 tokens. Des contrôles de plausibilité excluent les valeurs aberrantes des analyses.</p>
-
+        </div>
+        <div class="card">
           <h3>Analyse quantitative</h3>
           <p>Un tableau de bord rejoue chaque stratégie sur les trajectoires de prix réelles. Il calcule 9 métriques de risque, dont les ratios de Sharpe, Sortino et Calmar, la VaR et la CVaR, et lance des simulations Monte Carlo par permutation et par bootstrap pour mesurer la dispersion du résultat et du drawdown.</p>
           <p>Un optimiseur teste jusqu'à 231 458 configurations de take-profit et de stop-loss par exécution. Des courbes de sensibilité distinguent un plateau robuste d'un pic isolé.</p>
 
           <h3>Rigueur méthodologique</h3>
           <p>Un ratio de Sortino 80 fois supérieur au Sharpe a révélé une erreur de formule, corrigée et couverte par des tests. Quand un take-profit et le stop-loss tombent dans la même bougie, le stop-loss est compté en premier. Les entrées sont supposées 5 % au-dessus du prix d'alerte.</p>
-
+        </div>
+        <div class="card">
           <h3>Limites</h3>
           <p>Les résultats reposent sur quelques tokens très performants : la meilleure stratégie change à chaque nouveau cas extrême. Aucune stratégie n'est figée avant 500 observations par groupe, et le test hors échantillon reste à faire. Aucun achat automatique n'est actif.</p>
 
@@ -224,7 +236,7 @@
           <h3>Mon rôle</h3>
           <p>Conception du système et de ses règles, pilotage du développement assisté par IA, vérification de chaque résultat, analyse des données.</p>
         </div>
-        <aside class="ledger" aria-label="Chiffres RUGTRAAK">
+        <aside class="card ledger" aria-label="Chiffres RUGTRAAK">
           <span class="label">Chiffres</span>
           <dl>
             <div><dt>Cas collectés</dt><dd>913 <small>3 groupes principaux</small></dd></div>
@@ -241,7 +253,7 @@
     <section id="projet-sqkeys" class="detail-page" hidden>
       <button type="button" class="back">Retour aux projets</button>
       <article class="detail">
-        <div class="text">
+        <div class="card">
           <h2>SQ Keys</h2>
           <div class="meta">Hackathon BSA x EPFL avec DeVinci Blockchain (DVB), Lausanne · 10 et 11 octobre 2026 · équipe de 3</div>
 
@@ -250,21 +262,20 @@
 
           <h3>Le prototype</h3>
           <p>C'est un prototype de wallet en auto-garde qu'une banque comme Swissquote pourrait proposer. Les fonds sont sur un compte Safe qui demande 2 signatures sur 3 : le téléphone du client, un avocat indépendant et la banque, qui n'intervient que pour la récupération. Le plafond par défaut est de 5 USDC par transaction.</p>
-
+        </div>
+        <div class="card">
           <h3>Mon rôle</h3>
           <p>J'étais responsable technique et juridique. Côté technique : découpage du travail entre trois agents de code, qui tournaient en 3 sessions en parallèle, et relecture des commits. Côté juridique : conditions d'utilisation et analyse réglementaire suisse (FINMA, LBA, nLPD).</p>
-
+        </div>
+        <div class="card">
           <h3>État du prototype</h3>
           <div class="status" aria-label="Ce qui a été livré">
             <div class="status-row"><span class="chip done">livré</span><span>Safe 2-sur-3 sur testnet (Base Sepolia), règles de dépense côté avocat, récupération du compte sans changer d'adresse, frais pris en charge par un relais.</span></div>
             <div class="status-row"><span class="chip research">recherche</span><span>Signature à seuil (MPC) : une transaction USDC sur testnet signée par 2 parties sur 3, non intégrée à l'application.</span></div>
             <div class="status-row"><span class="chip sim">simulé</span><span>Connexion Swissquote, vérification d'identité et compte bancaire, signalés comme tels dans l'interface.</span></div>
           </div>
-
-          <h3>Bilan</h3>
-          <p>Pas de prix.</p>
         </div>
-        <aside class="ledger" aria-label="Chiffres SQ Keys">
+        <aside class="card ledger" aria-label="Chiffres SQ Keys">
           <span class="label">Chiffres</span>
           <dl>
             <div><dt>Durée</dt><dd>24 h</dd></div>
@@ -279,7 +290,7 @@
     <section id="projet-admp" class="detail-page" hidden>
       <button type="button" class="back">Retour aux projets</button>
       <article class="detail">
-        <div class="text">
+        <div class="card">
           <h2>ADMP</h2>
           <div class="meta">Projet d'innovation industrielle ESILV (PI² n°014) · équipe de 6 · octobre 2026 à avril 2027 · Python, pandas, scikit-learn, Streamlit</div>
 
@@ -288,20 +299,22 @@
 
           <h3>Problématique</h3>
           <p>Quelles méthodes quantitatives font réellement mieux qu'un portefeuille équipondéré une fois les frais et les biais de backtest pris en compte ?</p>
-
+        </div>
+        <div class="card">
           <h3>Stratégies comparées</h3>
           <p>Équipondération (référence), pondération inverse de la volatilité, Markowitz (variance minimale, Sharpe maximal), parité de risque, suivi de tendance à volatilité cible, prévisions par machine learning.</p>
 
           <h3>Méthode</h3>
           <p>Aucune information du futur (un signal calculé le jour t est exécuté le jour t+1). Séries continues ajustées pour les roulements de contrats. Frais de transaction déduits à chaque rééquilibrage. Validation glissante pour les modèles de prévision.</p>
-
+        </div>
+        <div class="card">
           <h3>Mon rôle</h3>
           <p>Responsable technique et intégrateur : architecture du code, moteur de backtest, relecture et validation des contributions de l'équipe, rédaction de la partie méthodologique du dossier de cadrage. Développement assisté par IA (Claude Code), avec vérification par des tests contre des valeurs calculées indépendamment.</p>
 
           <h3>État</h3>
           <p>Projet en cours. Dossier de cadrage de 10 pages rédigé. Développement du moteur de backtest à venir. Aucun résultat à ce jour.</p>
         </div>
-        <aside class="ledger" aria-label="Chiffres ADMP">
+        <aside class="card ledger" aria-label="Chiffres ADMP">
           <span class="label">Chiffres</span>
           <dl>
             <div><dt>Matières premières</dt><dd>8 <small>version initiale</small></dd></div>
@@ -314,7 +327,8 @@
   </section>
 
   <section id="contact">
-    <div class="section-head"><h2 class="swarm-title-text">Contact</h2></div>
+    <div class="section-head has-string"><h2 class="swarm-title-text">Contact</h2></div>
+    <div class="rule" data-string aria-hidden="true"></div>
     <dl class="contact-list">
       <div><dt class="label">E-mail</dt><dd><span>dinguirardaaron@gmail.com</span></dd></div>
       <div><dt class="label">LinkedIn</dt><dd><a href="https://www.linkedin.com/in/aaron-dinguirard-2a9785258" target="_blank" rel="noopener">linkedin.com/in/aaron-dinguirard-2a9785258</a></dd></div>
