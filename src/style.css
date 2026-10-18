@@ -85,6 +85,19 @@
   --swarm-color: #C8875A;
 }
 
+/* Shadows and edges take the hue of what they frame, never pure black or white: the shadow is the sheet darkened, the
+   inset edge the sheet lightened toward the ink. Declared wherever a theme is, so each themed element mixes its own. */
+:root, [data-theme] {
+  --shadow-color: color-mix(in srgb, var(--sheet) 45%, black);
+  --edge-color: color-mix(in srgb, var(--sheet) 80%, var(--ink));
+}
+/* Light sheets: lightening toward the ink would darken them, so the edge goes toward the paper instead, short of white */
+[data-theme="auxiga"], [data-theme="mercor"] { --edge-color: color-mix(in srgb, var(--sheet) 50%, var(--paper)); }
+/* Shadow offsets a tilt moves, set on the element itself by experience.js and cards.js; not inherited, so a change
+   restyles that element only */
+@property --shadow-x { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --shadow-y { syntax: "<length>"; inherits: false; initial-value: 0px; }
+
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; }
@@ -132,7 +145,7 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 @keyframes orb-drift { 0% { transform: translate(0, 0); } 50% { transform: translate(9vmax, 6vmax); } 100% { transform: translate(-6vmax, 10vmax); } }
 
 /* RUGTRAAK glass: the text and the ledger float over the halos and the contour lines */
-[data-theme="rugtraak"] .detail-page .text, [data-theme="rugtraak"] .detail-page .ledger { background: rgba(10, 8, 28, 0.62); -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 20px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 32px rgba(0, 0, 0, 0.35); padding: clamp(20px, 2.4vw, 40px); }
+[data-theme="rugtraak"] .detail-page .text, [data-theme="rugtraak"] .detail-page .ledger { background: rgba(10, 8, 28, 0.62); -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%); border: 1px solid var(--edge-color); border-radius: 20px; box-shadow: inset 0 1px 0 var(--edge-color), 0 8px 32px var(--shadow-color); padding: clamp(20px, 2.4vw, 40px); }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   [data-theme="rugtraak"] .detail-page .text, [data-theme="rugtraak"] .detail-page .ledger { background: rgba(10, 8, 28, 0.92); }
 }
@@ -142,7 +155,7 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 /* Paint blob cursor of cursor.js: a lit drop of the page's accent with a soft rim; cursor.js moves, stretches and swells
    it, and --charge (set by the swarm) lights its glow. Opacity only changes through these classes. */
 @property --charge { syntax: "<number>"; inherits: true; initial-value: 0; } /* inherited, so the ::after glow reads it */
-#cursor-blob { position: fixed; top: 0; left: 0; width: 22px; height: 22px; border-radius: 50%; pointer-events: none; z-index: -1; background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.35), transparent 60%), var(--accent); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); opacity: 0; transition: opacity 0.25s ease; will-change: transform; }
+#cursor-blob { position: fixed; top: 0; left: 0; width: 22px; height: 22px; border-radius: 50%; pointer-events: none; z-index: -1; background: radial-gradient(circle at 30% 30%, rgba(240, 230, 204, 0.35), transparent 60%), var(--accent); box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 55%, black); opacity: 0; transition: opacity 0.25s ease; will-change: transform; }
 #cursor-blob.is-visible { opacity: 0.55; }
 #cursor-blob.is-visible.is-hover { opacity: 0.35; }
 #cursor-blob::after { content: ""; position: absolute; inset: -60%; border-radius: 50%; background: radial-gradient(circle, var(--accent), transparent 70%); opacity: var(--charge); pointer-events: none; }
@@ -190,7 +203,7 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 .exp-step:nth-child(2) { grid-column: 2 / 4; animation-duration: 2.6s; animation-delay: -1.7s; }
 .exp-step:nth-child(3) { animation-duration: 3.4s; animation-delay: -0.9s; }
 @keyframes exp-float { from { transform: translateY(-5px); } to { transform: translateY(5px); } }
-.exp-link { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 18px; align-items: center; padding: clamp(14px, 1.2vw, 22px) clamp(22px, 2vw, 36px) clamp(14px, 1.2vw, 22px) clamp(14px, 1.2vw, 22px); background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; color: var(--ink); text-decoration: none; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); transition: border-color 0.2s ease, translate 0.2s ease; will-change: transform; }
+.exp-link { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 18px; align-items: center; padding: clamp(14px, 1.2vw, 22px) clamp(22px, 2vw, 36px) clamp(14px, 1.2vw, 22px) clamp(14px, 1.2vw, 22px); background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; color: var(--ink); text-decoration: none; box-shadow: var(--shadow-x) calc(10px + var(--shadow-y)) 28px var(--shadow-color), inset 0 1px 0 var(--edge-color); transition: border-color 0.2s ease, translate 0.2s ease; will-change: transform; }
 
 /* Keyboard focus: the ring plus a small fixed lift, on top of whatever tilt is applied */
 .exp-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 14px; border-color: var(--accent); translate: 0 -4px; }
@@ -202,7 +215,7 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 #bubble-stage { position: relative; width: 100%; height: 80svh; min-height: 560px; margin-top: 24px; overflow: hidden; }
 #bubble-canvas { display: block; }
 /* Reduced motion: the same bubbles as static buttons */
-.bubble { position: absolute; transform: translate(-50%, -50%); border: 2px solid rgba(201, 169, 106, 0.75); border-radius: 50%; background: radial-gradient(circle 23px at 30% 30%, rgba(255, 255, 255, 0.25), transparent), rgba(201, 169, 106, 0.10); color: var(--ink); font: 600 15px var(--body); cursor: pointer; display: grid; place-items: center; align-content: center; gap: 6px; }
+.bubble { position: absolute; transform: translate(-50%, -50%); border: 2px solid rgba(201, 169, 106, 0.75); border-radius: 50%; background: radial-gradient(circle 23px at 30% 30%, rgba(240, 230, 204, 0.25), transparent), rgba(201, 169, 106, 0.10); color: var(--ink); font: 600 15px var(--body); cursor: pointer; display: grid; place-items: center; align-content: center; gap: 6px; }
 .bubble img { width: 46%; aspect-ratio: 1; border-radius: 50%; }
 /* Stand-in for a clicked bubble while it swells and fades, just before the burst */
 .bubble-pop { position: absolute; display: grid; place-items: center; border: 2px solid rgba(201, 169, 106, 0.9); border-radius: 50%; background: rgba(201, 169, 106, 0.14); color: var(--ink); font: 600 15px var(--body); pointer-events: none; }
@@ -238,7 +251,7 @@ button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--
   .detail .text > h3 { break-after: avoid; margin-top: 26px; }
   .detail .text > .meta + h3 { margin-top: 18px; }
 }
-.ledger { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; align-self: start; display: grid; gap: 12px; min-width: 0; }
+.ledger { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; align-self: start; display: grid; gap: 12px; min-width: 0; box-shadow: 0 6px 20px var(--shadow-color), inset 0 1px 0 var(--edge-color); }
 .ledger dl { margin: 0; display: grid; gap: 10px; }
 .ledger div { display: grid; gap: 2px; }
 .ledger dt { font-size: clamp(13px, 0.7rem + 0.25vw, 17px); color: var(--muted); }
@@ -247,7 +260,7 @@ button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--
 
 .status { display: grid; gap: 8px; margin-top: 4px; }
 .status-row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; font-size: 15px; }
-.chip { font: 500 11px/1.9 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; border-radius: 3px; text-align: center; height: fit-content; }
+.chip { font: 500 11px/1.9 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; border-radius: 3px; text-align: center; height: fit-content; box-shadow: 0 1px 2px var(--shadow-color); }
 .chip.done { color: var(--ok); border: 1px solid currentColor; }
 .chip.research { color: var(--warn); border: 1px solid currentColor; }
 .chip.sim { color: var(--muted); border: 1px solid currentColor; }
