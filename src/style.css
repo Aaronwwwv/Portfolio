@@ -63,16 +63,19 @@
   --swarm-color: #2D2390;
   color-scheme: light;
 }
+/* SQ Keys: the Swissquote logo's orange on its dark grey. Text on #2B2B2B / #333333: ink 12.7 / 11.3, muted 8.1 / 7.2,
+   accent text 8.1 / 7.2, ok 8.0 / 7.1, warn 8.0 / 7.1 */
 [data-theme="sqkeys"] {
-  --paper: #232323;
-  --sheet: #2E2E2E;
+  --paper: #2B2B2B;
+  --sheet: #333333;
   --ink: #F2F2F2;
   --muted: #C4C4C4;
-  --line: #444444;
-  --accent: #F85830;
-  --accent-text: #FBA690;
-  --swarm-color: #F86844;
-  --ok: #87C9A2;
+  --line: #4A4A4A;
+  --accent: #FD5D32;
+  --accent-text: #FCB29F;
+  --swarm-color: #FD6A42;
+  --ok: #95CFAD;
+  --warn: #E4BD7B;
 }
 [data-theme="admp"] {
   --paper: #12171A;
@@ -149,8 +152,11 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   [data-theme="rugtraak"] .detail-page .card { background: rgba(10, 8, 28, 0.92); }
 }
-/* The docked particles orbit inside the blob: on this page the swarm and the blob go above the panels (still inert) */
-[data-theme="rugtraak"] #swarm-canvas, [data-theme="rugtraak"] #cursor-blob { z-index: 6; }
+/* The docked particles orbit inside the blob: on the pages where the swarm is absorbed, the swarm and the blob go above
+   the cards (still inert) */
+[data-theme="rugtraak"] #swarm-canvas, [data-theme="rugtraak"] #cursor-blob,
+[data-theme="sqkeys"] #swarm-canvas, [data-theme="sqkeys"] #cursor-blob,
+[data-theme="admp"] #swarm-canvas, [data-theme="admp"] #cursor-blob { z-index: 6; }
 
 /* Paint blob cursor of cursor.js: a lit drop of the page's accent with a soft rim; cursor.js moves, stretches and swells
    it, and --charge (set by the swarm) lights its glow. Opacity only changes through these classes. */
@@ -224,7 +230,8 @@ html.swarm-on .swarm-title-text { position: absolute; width: 1px; height: 1px; o
 /* A short detail page keeps its back button at the top and its article in the middle of the rest of the screen */
 .detail-page { display: grid; gap: 28px; min-height: var(--page-min); grid-template-rows: auto 1fr; }
 .detail-page > * { min-width: 0; }
-button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--accent-text); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+/* On the paper, so the background effects of the themed pages never run under its label */
+button.back { justify-self: start; font: 500 14px/1.4 var(--body); color: var(--accent-text); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
 /* Press feedback, on every input: the tap highlight is off, so these are what a finger sees */
 .exp-link:active, button.back:active, .menu-btn:active, .bubble:active { scale: 0.97; transition: scale 0.1s ease-out; }
 /* Hover only where there is a real hover: on touch screens a tapped element would keep it */
