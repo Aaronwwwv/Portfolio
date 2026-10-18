@@ -1,5 +1,6 @@
 import gsap from 'gsap';
 import { lenis } from './scroll.js';
+import { runWarp, finishTransition } from './warp.js';
 
 // Hash routing: "#parcours" shows one page, "#projets/rugtraak" a project detail page, "#parcours/auxiga" an experience one.
 // Pages are reached from the home menu and left with Retour, Escape or the browser history.
@@ -15,9 +16,19 @@ const TITLES = {
   contact: 'CONTACT',
   'projet-rugtraak': 'RUGTRAAK',
   'projet-sqkeys': 'SQ KEYS',
+  'projet-admp': 'ADMP',
   'exp-mercor': 'MERCOR',
   'exp-auxiga': 'AUXIGA',
   'exp-tutorat': 'AARON\nTUTORAT',
+};
+// Theme of each detail page, set as data-theme on <html>; every other page keeps the default theme.
+const THEMES = {
+  'exp-mercor': 'mercor',
+  'exp-auxiga': 'auxiga',
+  'exp-tutorat': 'tutorat',
+  'projet-rugtraak': 'rugtraak',
+  'projet-sqkeys': 'sqkeys',
+  'projet-admp': 'admp',
 };
 // Pages with detail pages: the id prefix of their details and the list the details replace.
 const DETAILS = {
@@ -25,13 +36,20 @@ const DETAILS = {
   parcours: { prefix: 'exp', list: document.getElementById('parcours-liste') },
 };
 
+// Depth of a page: home 0, the three menu pages 1, every detail page 2. Moving between a list and one of its details
+// runs the warp, forward when going deeper; every other move keeps the fade.
+const depthOf = (route) => (route.view === HOME ? 0 : route.detail ? 2 : 1);
+
 const views = document.querySelectorAll('main > section');
 const detailPages = document.querySelectorAll('.detail-page');
 const backHome = document.getElementById('back-home');
+const themeColor = document.querySelector('meta[name="theme-color"]');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 let current = readRoute();
 let timeline = null;
+let pendingOrigin = null; // viewport point of the click that leads into a detail page
+let lastOrigin = null; // origin of the last forward warp, where the way back returns to
 
 function readRoute() {
   const [view, detail] = window.location.hash.replace(/^#/, '').split('/');
@@ -56,20 +74,56 @@ function apply(route) {
   backHome.hidden = route.view === HOME || detail !== null;
   // style.css sizes the title band per page from this (a two-line title needs a taller band on narrow screens).
   document.documentElement.dataset.page = detail ? detail.id : route.view;
+  // Set before section:change, so the swarm reads the new theme's colour.
+  const theme = detail && THEMES[detail.id];
+  if (theme) document.documentElement.dataset.theme = theme;
+  else delete document.documentElement.dataset.theme;
+  // The browser bar takes the colour of the page's paper.
+  themeColor.content = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
   lenis.scrollTo(0, { immediate: true, force: true });
   window.dispatchEvent(new CustomEvent('section:change', { detail: { title: TITLES[detail ? detail.id : route.view] } }));
   return detail;
 }
 
-// Every hash change fades the page out, swaps it and fades the new one in.
+const viewportCentre = () => ({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+
+// The page a route shows inside its section: the list, or the detail page that replaces it.
+function pageOf(route) {
+  return detailOf(route) || DETAILS[route.view].list;
+}
+
+// A move between a list and one of its own detail pages, in either direction.
+function isWarpMove(from, to) {
+  return from.view === to.view && DETAILS[to.view] && Math.abs(depthOf(from) - depthOf(to)) === 1;
+}
+
+// Every hash change fades the page out, swaps it and fades the new one in, or goes through the warp.
 function navigate(route) {
+  const previous = current;
   current = route;
-  // A transition cut short leaves whichever section was on screen as the one that goes out.
+  // A warp or a fade cut short ends in its end state, so the DOM always starts from a page at rest.
+  finishTransition();
   timeline?.kill();
   timeline = null;
   gsap.set(views, { clearProps: 'opacity' });
+  const origin = pendingOrigin;
+  pendingOrigin = null;
+  const warp = isWarpMove(previous, route);
 
-  if (reducedMotion.matches) {
+  if (warp && !reducedMotion.matches) {
+    const forward = depthOf(route) > depthOf(previous);
+    if (forward) lastOrigin = origin || viewportCentre();
+    runWarp({
+      direction: forward ? 1 : -1,
+      outgoing: pageOf(previous),
+      incoming: pageOf(route),
+      origin: forward ? lastOrigin : lastOrigin || viewportCentre(),
+      swap: () => apply(route),
+    });
+    return;
+  }
+  // Reduced motion: no movement; a list and its detail still crossfade, every other move is immediate.
+  if (reducedMotion.matches && !warp) {
     apply(route);
     return;
   }
@@ -95,6 +149,16 @@ function onKeyDown(event) {
   if (current.detail) window.location.hash = current.view;
   else if (current.view !== HOME) window.location.hash = HOME;
 }
+
+// The warp into an experience starts from the middle of the link that was clicked (or activated from the keyboard).
+document.querySelectorAll('a.exp-link').forEach((link) => {
+  link.addEventListener('click', () => {
+    const box = link.getBoundingClientRect();
+    pendingOrigin = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  });
+});
+// Project bubbles send the point they were clicked at, just before they change the hash.
+window.addEventListener('tunnel:origin', ({ detail }) => { pendingOrigin = { x: detail.x, y: detail.y }; });
 
 document.querySelectorAll('.detail-page .back').forEach((button) => {
   button.addEventListener('click', () => { window.location.hash = button.closest('main > section').id; });

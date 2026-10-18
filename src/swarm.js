@@ -1,5 +1,6 @@
 import gsap from 'gsap';
 import { createNoise3D } from 'simplex-noise';
+import { cursorState } from './cursor.js';
 
 // Particle swarm behind the page: it drifts on a flow field, spells AARON in the intro and each page title, then settles into a faint blurred tornado.
 const PARTICLES = 1500; // desktop budget
@@ -41,8 +42,8 @@ const SKIP_IGNORED_KEYS = ['Tab', 'Shift']; // keys that move the focus (to Pass
 const TITLE_HOLD_MS = 1500;
 const INTRO_CLASS = 'is-intro'; // on <html> while the intro runs: style.css hides <main> so the word never crosses body text
 const INTRO_FALLBACK_MS = 500; // the release happens at the latest this long after it should have
-const FONT_LOAD = '700 120px "Big Shoulders Stencil Display"';
-const FONT_FAMILY = '"Big Shoulders Stencil Display", Impact, sans-serif';
+const TITLE_WEIGHT = 900; // weight of the titles the swarm spells; the family is --display in style.css
+const SAMPLE_SIZE = 120; // px, font size the titles are measured at before scaling to their box
 const TEXT_WIDTH = 0.7; // share of the viewport width a page title may take
 const INTRO_WIDTH = 0.92; // share of the viewport width for AARON
 const INTRO_HEIGHT = 0.6; // share of the viewport height AARON may take, centred
@@ -50,6 +51,10 @@ const BAND_TOP = 24; // px from the top of the viewport to the title band; the b
 const SWARM_CLASS = 'swarm-on'; // on <html> while the swarm runs: style.css then hides the headings the swarm spells
 const TEXT_FIT = 0.8; // share of the band height the title letters may take, centred in the band
 const BAND_SIDE_CLEAR = 96; // px kept free on each side of a page title, so it never meets the fixed Retour link (16..80 px)
+// Narrow screens: the title box starts below the Retour link (16..41 px from the top) instead of beside it, so the
+// letters may take the full width of the page; the band in style.css is sized for this.
+const NARROW_TOP = 48; // px from the top of the viewport
+const NARROW_SIDE = 20; // px on each side, the page gutter
 // A "\n" in a title marks where it breaks on narrow screens; wider screens join it with a space. style.css makes the
 // band of such a page taller under the same width.
 const TWO_LINE_QUERY = '(max-width: 520px)';
@@ -72,10 +77,46 @@ const TRAIL_FADE = 0.16; // alpha of the erase pass each frame; formed text clea
 const BACKGROUND_BLUR = 'blur(6px)';
 const DOT_RADIUS = 1; // px, half the side of a particle
 const DOT_RADIUS_FORMED = 1.4; // px, same while particles form or hold a word, for legibility
-const COLOR = '#C9A96A';
+const COLOR = '#C9A96A'; // until the page's --swarm-color is read
 const ERASE = '#000';
 const MAX_DPR = 2;
 const RESIZE_DELAY = 200; // ms
+// Warp between a list and a detail page: the particles become stars streaming away from the point that was clicked
+// (forward) or toward it (back), speed peaking at WARP_PEAK of the way, then shrinking back to points.
+export const WARP_FORWARD_MS = 1100;
+export const WARP_BACK_MS = 900;
+const WARP_PEAK = 0.55; // share of the warp where the stars are fastest
+const WARP_SPEED = 0.026; // peak speed of a near star, as a share of the viewport diagonal per frame at 60 fps
+const WARP_STREAK_MAX = 140; // px, longest streak, desktop
+const WARP_STREAK_SMALL = 70; // px, same on small screens
+const WARP_SPEED_MIN = 0.7; // each star's own speed factor, fixed for the session
+const WARP_SPEED_MAX = 1.3;
+// Depth bands, far to near: share of the stars, speed, streak length, alpha and line width.
+const WARP_BAND_SHARE = [0.5, 0.3, 0.2];
+const WARP_BAND_SPEED = [0.35, 0.7, 1.2];
+const WARP_BAND_LENGTH = [0.3, 0.6, 1];
+const WARP_BAND_ALPHA = [0.3, 0.55, 0.9];
+const WARP_BAND_WIDTH = [1, 1.3, 1.6];
+const WARP_FADE_IN = 0.08; // share of the warp over which the stars brighten from the page's own particles
+const WARP_RESPAWN_R = 40; // px, a forward star leaving the viewport comes back within this of the origin
+const WARP_ARRIVE_R = 24; // px, an inbound star this close to the origin comes back at the rim
+const WARP_CLASS = 'is-warp'; // on the canvas during a warp: style.css drops the background blur in 0.3 s
+// Absorbed: on these themes, once the title has been held, every particle flies into the paint blob and docks there.
+const ABSORB_THEMES = ['rugtraak'];
+const BLOB_ORBIT_R = 8; // px, each particle aims at its own fixed point within this of the blob centre
+const ABSORB_DELAY_MAX = 0.9; // s, start delays are spread between 0 and this
+const ABSORB_FLIGHT_MIN = 0.9; // s, each flight
+const ABSORB_FLIGHT_MAX = 1.4;
+const ORBIT_VISIBLE = 60; // the first docked particles stay drawn, circling inside the blob; the rest are hidden
+const ORBIT_R_MIN = 3; // px
+const ORBIT_R_MAX = 9;
+const ORBIT_SPEED = 2.6; // rad/s
+const ORBIT_ALPHA = 0.9;
+const ORBIT_DOT = 1.1; // px, half the side of an orbiting particle
+const CHARGE_FOLLOW = 0.08; // share of the way to the docked share the blob's charge covers per frame
+const RELEASE_MS = 400; // leaving the page: the charge drains over this
+const RELEASE_SPREAD = 26; // px, released particles start within this of the blob
+const TOUCH_FADE_MS = 800; // no fine pointer: the particles fade out instead, and the swarm rests
 
 const TAU = Math.PI * 2;
 const random = (min, max) => min + Math.random() * (max - min);
@@ -96,18 +137,52 @@ let state = 'swarm';
 let timeline = null;
 let running = false;
 let fontReady = null;
+let fontFamily = ''; // --display, read on each title request; a new family is loaded before any sampling
 let requests = 0; // the latest request wins when titles arrive faster than the font promise resolves
 let lastTitle = null; // last title received from the page
+let color = COLOR; // --swarm-color of the page shown, read once per page change
 let shown = null; // { text, zone } currently formed or forming, for a re-layout on resize
 let introTimeline = null;
 let introTimer = 0;
+// Warp: origin, direction, progress 0..1 driven by a tween, and per star its speed factor and depth band.
+const warp = { tween: null, p: 0, x: 0, y: 0, inward: false, onEnd: null, pendingTitle: null, streak: WARP_STREAK_MAX };
+let warpSpeed = null; // Float32Array, one per particle
+let warpBand = null; // Uint8Array, one per particle
+// Absorption: start time, docked count, whether the swarm rests (touch), and per particle its flight and its orbit.
+const absorb = { t0: 0, docked: 0, resting: false, charge: null };
+let absorbDelay = null;
+let absorbFlight = null;
+let absorbFromX = null;
+let absorbFromY = null;
+let absorbAimX = null;
+let absorbAimY = null;
+let orbitRadius = null;
+let orbitAngle = null;
+let dockOrder = null; // Int16Array: -1 while flying, else the order it docked in
+const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
 // Recorded before initSwarm too: the first title, sent while the page loads, must not be animated over the intro.
+// During a warp the new page's colour is taken at once and its title waits for the warp to end.
 window.addEventListener('section:change', ({ detail }) => {
+  color = getComputedStyle(document.documentElement).getPropertyValue('--swarm-color').trim() || COLOR;
   if (detail.title === lastTitle) return;
   lastTitle = detail.title;
-  if (canvas) setSwarmTitle(lastTitle);
+  if (!canvas) return;
+  if (warp.tween) warp.pendingTitle = lastTitle;
+  else setSwarmTitle(lastTitle);
 });
+
+const titleFont = (size) => `${TITLE_WEIGHT} ${size}px ${fontFamily}`;
+
+// The title family comes from --display; the font is loaded once per family, before the letters are sampled.
+function loadTitleFont() {
+  const family = getComputedStyle(document.documentElement).getPropertyValue('--display').trim();
+  if (family !== fontFamily || !fontReady) {
+    fontFamily = family;
+    fontReady = document.fonts.load(titleFont(SAMPLE_SIZE)).catch(() => {});
+  }
+  return fontReady;
+}
 
 // The band is as tall as the space style.css reserves above the page content.
 function readLayout() {
@@ -115,10 +190,17 @@ function readLayout() {
 }
 
 function zoneBox(zone) {
-  const boxWidth = zone === 'center' ? width * INTRO_WIDTH : Math.min(width * TEXT_WIDTH, width - 2 * BAND_SIDE_CLEAR);
-  const boxHeight = zone === 'center' ? height * INTRO_HEIGHT : titleBand * TEXT_FIT;
-  const top = zone === 'center' ? (height - boxHeight) / 2 : BAND_TOP + (titleBand - boxHeight) / 2;
-  return { x: (width - boxWidth) / 2, y: top, width: boxWidth, height: boxHeight };
+  if (zone === 'center') {
+    const boxWidth = width * INTRO_WIDTH;
+    const boxHeight = height * INTRO_HEIGHT;
+    return { x: (width - boxWidth) / 2, y: (height - boxHeight) / 2, width: boxWidth, height: boxHeight };
+  }
+  const narrow = twoLines.matches;
+  const top = narrow ? NARROW_TOP : BAND_TOP;
+  const room = BAND_TOP + titleBand - top; // the rest of the band below that top
+  const boxWidth = narrow ? width - 2 * NARROW_SIDE : Math.min(width * TEXT_WIDTH, width - 2 * BAND_SIDE_CLEAR);
+  const boxHeight = room * TEXT_FIT;
+  return { x: (width - boxWidth) / 2, y: top + (room - boxHeight) / 2, width: boxWidth, height: boxHeight };
 }
 
 function titleLines(text) {
@@ -129,11 +211,11 @@ function titleLines(text) {
 // Lines drawn to fit the box, each centred on the widest: font size, ink size and where each line's baseline starts,
 // measured from the top left of the ink.
 function fitText(target, lines, box) {
-  target.font = FONT_LOAD;
+  target.font = titleFont(SAMPLE_SIZE);
   const metrics = lines.map((line) => target.measureText(line));
   const widths = metrics.map((m) => m.actualBoundingBoxLeft + m.actualBoundingBoxRight);
   const inkWidth = Math.max(...widths);
-  const gap = 120 * LINE_GAP;
+  const gap = SAMPLE_SIZE * LINE_GAP;
   const inkHeight = metrics.reduce((sum, m) => sum + m.actualBoundingBoxAscent + m.actualBoundingBoxDescent, 0) + gap * (lines.length - 1);
   const scale = Math.min(box.width / inkWidth, box.height / inkHeight);
   let top = 0;
@@ -143,7 +225,7 @@ function fitText(target, lines, box) {
     return line;
   });
   return {
-    font: `700 ${120 * scale}px ${FONT_FAMILY}`,
+    font: titleFont(SAMPLE_SIZE * scale),
     inkWidth: Math.ceil(inkWidth * scale),
     inkHeight: Math.ceil(inkHeight * scale),
     lines: placed,
@@ -191,13 +273,111 @@ function sampleText(lines, box) {
 function setState(next) {
   state = next;
   canvas.dataset.state = next;
-  // Set once per change; the CSS transition eases it in and out.
-  canvas.style.filter = next === 'dispersing' || next === 'background' ? BACKGROUND_BLUR : 'none';
+  // Set once per change; the CSS transition eases it in and out. During a warp the class on the canvas wins.
+  if (next !== 'warp') canvas.style.filter = next === 'dispersing' || next === 'background' ? BACKGROUND_BLUR : 'none';
 }
 
 function release(next) {
   particles.forEach((particle) => { particle.free = true; });
   setState(next);
+}
+
+const absorbing = () => state === 'absorbing' || state === 'absorbed' || absorb.resting;
+
+// The title has been held: each particle sets off for the blob after its own delay. Without a fine pointer there is
+// no blob, so the particles fade out and the swarm rests until the page changes.
+function beginAbsorb() {
+  shown = null;
+  if (!finePointer) {
+    const tl = gsap.timeline();
+    tl.to(particles, { a: 0, duration: TOUCH_FADE_MS / 1000, ease: 'power1.out' });
+    tl.call(() => {
+      absorb.resting = true;
+      pause();
+    });
+    timeline = tl;
+    return;
+  }
+  absorb.t0 = gsap.ticker.time;
+  absorb.docked = 0;
+  for (let index = 0; index < particles.length; index += 1) {
+    const particle = particles[index];
+    particle.free = false;
+    absorbFromX[index] = particle.x;
+    absorbFromY[index] = particle.y;
+    absorbDelay[index] = random(0, ABSORB_DELAY_MAX);
+    absorbFlight[index] = random(ABSORB_FLIGHT_MIN, ABSORB_FLIGHT_MAX);
+    const aim = random(0, TAU);
+    const reach = Math.sqrt(Math.random()) * BLOB_ORBIT_R;
+    absorbAimX[index] = Math.cos(aim) * reach;
+    absorbAimY[index] = Math.sin(aim) * reach;
+    orbitRadius[index] = random(ORBIT_R_MIN, ORBIT_R_MAX);
+    orbitAngle[index] = random(0, TAU);
+    dockOrder[index] = -1;
+  }
+  setState('absorbing');
+}
+
+// Leaving the page: the particles come back out of the blob, around it, at their usual alpha, and the charge drains.
+function releaseAbsorbed() {
+  if (!absorbing()) return;
+  for (let index = 0; index < particles.length; index += 1) {
+    const particle = particles[index];
+    if (dockOrder[index] >= 0 || absorb.resting) {
+      const angle = random(0, TAU);
+      const spread = random(0, RELEASE_SPREAD);
+      particle.x = cursorState.x + Math.cos(angle) * spread;
+      particle.y = cursorState.y + Math.sin(angle) * spread;
+    }
+    particle.a = SWARM_ALPHA;
+    dockOrder[index] = -1;
+  }
+  absorb.charge?.kill();
+  absorb.charge = gsap.to(cursorState, { charge: 0, duration: RELEASE_MS / 1000, ease: 'power1.out' });
+  release('swarm');
+  if (absorb.resting) {
+    absorb.resting = false;
+    start();
+  }
+}
+
+// One frame of the absorption: flights eased toward the live blob position, then the docked particles circling in it.
+function absorbFrame(time, frames) {
+  context.clearRect(0, 0, width, height);
+  const elapsed = time - absorb.t0;
+  const targetX = cursorState.x;
+  const targetY = cursorState.y;
+  context.fillStyle = color;
+  context.globalAlpha = FORMED_ALPHA;
+  for (let index = 0; index < particles.length; index += 1) {
+    if (dockOrder[index] >= 0) continue;
+    const particle = particles[index];
+    const k = (elapsed - absorbDelay[index]) / absorbFlight[index];
+    if (k >= 1) {
+      dockOrder[index] = absorb.docked;
+      absorb.docked += 1;
+      continue;
+    }
+    if (k > 0) {
+      // power2.inOut, toward where the blob is now.
+      const eased = k < 0.5 ? 2 * k * k : 1 - ((-2 * k + 2) ** 2) / 2;
+      particle.x = absorbFromX[index] + (targetX + absorbAimX[index] - absorbFromX[index]) * eased;
+      particle.y = absorbFromY[index] + (targetY + absorbAimY[index] - absorbFromY[index]) * eased;
+    }
+    context.fillRect(particle.x - DOT_RADIUS_FORMED, particle.y - DOT_RADIUS_FORMED, DOT_RADIUS_FORMED * 2, DOT_RADIUS_FORMED * 2);
+  }
+  context.globalAlpha = ORBIT_ALPHA;
+  for (let index = 0; index < particles.length; index += 1) {
+    const order = dockOrder[index];
+    if (order < 0 || order >= ORBIT_VISIBLE) continue;
+    const angle = orbitAngle[index] + time * ORBIT_SPEED;
+    const x = targetX + Math.cos(angle) * orbitRadius[index];
+    const y = targetY + Math.sin(angle) * orbitRadius[index];
+    context.fillRect(x - ORBIT_DOT, y - ORBIT_DOT, ORBIT_DOT * 2, ORBIT_DOT * 2);
+  }
+  // The blob's charge follows the docked share; once everything has docked there is no swarm left on the page.
+  cursorState.charge += (absorb.docked / particles.length - cursorState.charge) * (1 - (1 - CHARGE_FOLLOW) ** frames);
+  if (absorb.docked === particles.length && state !== 'absorbed') setState('absorbed');
 }
 
 // Move timings: page titles stagger by a fixed step, the intro spreads its starts over a fixed time.
@@ -296,9 +476,14 @@ function addDisperse(tl, start) {
 
 export async function setSwarmTitle(text, { zone = 'band', hold = TITLE_HOLD_MS, timing = TITLE_TIMING } = {}) {
   const request = ++requests;
-  await fontReady;
+  await loadTitleFont();
   if (request !== requests || !canvas) return;
+  if (warp.tween) {
+    warp.pendingTitle = text;
+    return;
+  }
   stop();
+  releaseAbsorbed();
   readLayout(); // the band height may change with the page
   const points = text ? sampleText(titleLines(text), zoneBox(zone)) : [];
   const tl = gsap.timeline();
@@ -307,13 +492,15 @@ export async function setSwarmTitle(text, { zone = 'band', hold = TITLE_HOLD_MS,
     shown = { text, zone, hold };
     at = addForm(tl, at, points, timing) + hold / 1000;
   }
-  addDisperse(tl, at);
+  // On an absorbing theme the held title flies into the blob instead of settling into the background.
+  if (points.length && ABSORB_THEMES.includes(document.documentElement.dataset.theme)) tl.call(beginAbsorb, null, at);
+  else addDisperse(tl, at);
   timeline = tl;
 }
 
 async function playIntro() {
   const request = ++requests;
-  await fontReady;
+  await loadTitleFont();
   if (request !== requests) {
     endIntro(); // a page title arrived first and takes over
     return;
@@ -326,6 +513,120 @@ async function playIntro() {
   tl.call(releaseIntro, null, INTRO_RELEASE);
   timeline = tl;
   introTimeline = tl;
+}
+
+// Speed of the stars over the warp: accelerating up to the peak, then decelerating to a standstill at the end.
+function warpEnvelope(p) {
+  if (p < WARP_PEAK) {
+    const k = p / WARP_PEAK;
+    return k * k;
+  }
+  const k = (p - WARP_PEAK) / (1 - WARP_PEAK);
+  return 1 - k * k;
+}
+
+// Starts the warp from (x, y): direction 1 streams the stars outward, -1 inward. onEnd runs once it has settled.
+export function startWarp(x, y, direction, onEnd) {
+  if (!canvas) {
+    onEnd?.();
+    return;
+  }
+  finishWarp();
+  stop();
+  releaseAbsorbed();
+  warp.x = x;
+  warp.y = y;
+  warp.inward = direction < 0;
+  warp.onEnd = onEnd || null;
+  warp.pendingTitle = null;
+  warp.p = 0;
+  canvas.classList.add(WARP_CLASS);
+  setState('warp');
+  warp.tween = gsap.to(warp, {
+    p: 1,
+    duration: (warp.inward ? WARP_BACK_MS : WARP_FORWARD_MS) / 1000,
+    ease: 'none',
+    onComplete: endWarp,
+  });
+}
+
+// Jumps a running warp to its settled end.
+export function finishWarp() {
+  if (warp.tween) warp.tween.progress(1);
+}
+
+export function warpRunning() {
+  return warp.tween !== null;
+}
+
+// The stars are points again: they become the page's particles, which form its title or settle into the background.
+function endWarp() {
+  warp.tween = null;
+  canvas.classList.remove(WARP_CLASS);
+  particles.forEach((particle) => { particle.a = BACKGROUND_ALPHA; });
+  release('dispersing');
+  const { onEnd, pendingTitle } = warp;
+  warp.onEnd = null;
+  warp.pendingTitle = null;
+  if (pendingTitle) setSwarmTitle(pendingTitle);
+  else {
+    const tl = gsap.timeline();
+    addDisperse(tl, 0);
+    timeline = tl;
+  }
+  onEnd?.();
+}
+
+// One frame of the warp: every star moves along the line from the origin, and the streaks are stroked per depth band,
+// three paths in all.
+function warpFrame(frames) {
+  const speedEnvelope = warpEnvelope(warp.p);
+  const diagonal = Math.hypot(width, height);
+  const fadeIn = Math.min(1, warp.p / WARP_FADE_IN);
+  const sign = warp.inward ? -1 : 1;
+  context.clearRect(0, 0, width, height);
+  context.strokeStyle = color;
+  context.lineCap = 'round';
+  for (let band = 0; band < 3; band += 1) {
+    const speed = WARP_SPEED * diagonal * WARP_BAND_SPEED[band] * speedEnvelope;
+    const length = warp.streak * WARP_BAND_LENGTH[band] * speedEnvelope;
+    context.globalAlpha = WARP_BAND_ALPHA[band] * fadeIn;
+    context.lineWidth = WARP_BAND_WIDTH[band];
+    context.beginPath();
+    for (let index = 0; index < particles.length; index += 1) {
+      if (warpBand[index] !== band) continue;
+      const particle = particles[index];
+      let dx = particle.x - warp.x;
+      let dy = particle.y - warp.y;
+      let distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance < 0.5) {
+        dx = particle.breathX;
+        dy = particle.breathY;
+        distance = 1;
+      }
+      const ux = dx / distance;
+      const uy = dy / distance;
+      const step = speed * warpSpeed[index] * frames;
+      particle.x += ux * step * sign;
+      particle.y += uy * step * sign;
+      if (!warp.inward && (particle.x < 0 || particle.x > width || particle.y < 0 || particle.y > height)) {
+        // Out of view: reborn close to the origin, along its own fixed direction.
+        const radius = Math.random() * WARP_RESPAWN_R;
+        particle.x = warp.x + particle.breathX * radius;
+        particle.y = warp.y + particle.breathY * radius;
+      } else if (warp.inward && distance < WARP_ARRIVE_R) {
+        // Arrived: reborn on the far side of the viewport from the origin, along its own direction.
+        const reach = Math.max(warp.x, width - warp.x, warp.y, height - warp.y);
+        particle.x = Math.min(width, Math.max(0, warp.x + particle.breathX * reach));
+        particle.y = Math.min(height, Math.max(0, warp.y + particle.breathY * reach));
+      }
+      // The streak trails behind the star: toward the origin going out, away from it coming in.
+      const trail = length * warpSpeed[index];
+      context.moveTo(particle.x - ux * trail * sign, particle.y - uy * trail * sign);
+      context.lineTo(particle.x, particle.y);
+    }
+    context.stroke();
+  }
 }
 
 // Three sines of unrelated frequencies, normalised to -1..1: the roughness of the funnel radius.
@@ -349,6 +650,15 @@ function tick(time, deltaTime) {
   const swayPhase = tornadoClock * 0.35 + 1.3 * Math.sin(tornadoClock * 0.17);
   const follow = 1 - (1 - TORNADO_FOLLOW) ** frames;
 
+  if (state === 'warp') {
+    warpFrame(frames);
+    return;
+  }
+  if (state === 'absorbing' || state === 'absorbed') {
+    absorbFrame(time, frames);
+    return;
+  }
+
   // Erase pass: a faint fill leaves trails behind moving particles; formed text gets a clean frame.
   if (breathe) {
     context.clearRect(0, 0, width, height);
@@ -359,7 +669,7 @@ function tick(time, deltaTime) {
     context.fillRect(0, 0, width, height);
     context.globalCompositeOperation = 'source-over';
   }
-  context.fillStyle = COLOR;
+  context.fillStyle = color;
 
   for (let index = 0; index < particles.length; index += 1) {
     const particle = particles[index];
@@ -398,7 +708,7 @@ function tick(time, deltaTime) {
 }
 
 function start() {
-  if (running || reducedMotion) return;
+  if (running || reducedMotion || absorb.resting) return;
   running = true;
   gsap.ticker.add(tick);
 }
@@ -431,7 +741,7 @@ export function initSwarm() {
   document.body.prepend(canvas);
   context = canvas.getContext('2d');
   sampler = document.createElement('canvas');
-  fontReady = document.fonts.load(FONT_LOAD).catch(() => {});
+  loadTitleFont();
   resize();
 
   const small = window.innerWidth < SMALL_SCREEN;
@@ -455,9 +765,28 @@ export function initSwarm() {
       jitter: random(0.55, 1.1), // how far from the axis this particle orbits, relative to the funnel radius
     };
   });
+  warpSpeed = new Float32Array(count);
+  warpBand = new Uint8Array(count);
+  for (let index = 0; index < count; index += 1) {
+    warpSpeed[index] = random(WARP_SPEED_MIN, WARP_SPEED_MAX);
+    const pick = Math.random();
+    warpBand[index] = pick < WARP_BAND_SHARE[0] ? 0 : pick < WARP_BAND_SHARE[0] + WARP_BAND_SHARE[1] ? 1 : 2;
+  }
+  warp.streak = small ? WARP_STREAK_SMALL : WARP_STREAK_MAX;
+  absorbDelay = new Float32Array(count);
+  absorbFlight = new Float32Array(count);
+  absorbFromX = new Float32Array(count);
+  absorbFromY = new Float32Array(count);
+  absorbAimX = new Float32Array(count);
+  absorbAimY = new Float32Array(count);
+  orbitRadius = new Float32Array(count);
+  orbitAngle = new Float32Array(count);
+  dockOrder = new Int16Array(count).fill(-1);
 
   let resizeTimer = 0;
+  // A height-only change is the mobile URL bar sliding in or out: the canvas keeps its size.
   window.addEventListener('resize', () => {
+    if (window.innerWidth === width) return;
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(resize, RESIZE_DELAY);
   });
@@ -475,4 +804,6 @@ export function initSwarm() {
   } else {
     setSwarmTitle(lastTitle);
   }
+  // Dev server only (Vite drops this from the build): lets a test hold the stars together with the pages.
+  if (import.meta.env.DEV) window.__swarmDebug = { warp: () => warp.tween, state: () => state, docked: () => absorb.docked, count: () => particles.length, charge: () => cursorState.charge, resting: () => absorb.resting };
 }

@@ -1,5 +1,6 @@
 import Matter from 'matter-js';
 import gsap from 'gsap';
+import { warpRunning } from './warp.js';
 
 const { Bodies, Body, Composite, Engine, Events, Mouse, MouseConstraint, Query, Render, Runner } = Matter;
 
@@ -8,6 +9,8 @@ const { Bodies, Body, Composite, Engine, Events, Mouse, MouseConstraint, Query, 
 // RUGTRAAK: emblem (ring, R and its slashes) spans x 530..1133, y 129..655; the word below starts at y 694, so the crop
 // stops at cutBelow. Its near-black background melts into the bubble body with the lighten blend.
 // Swissquote: orange disc spans x 36..436, y 37..437 on an opaque grey square; the clip stays just inside the disc edge.
+// ADMP: emblem (arrow, arcs, wheat) spans x 531..933, y 156..452 on an opaque off-white background; its diagonal needs a
+// circle of r 249 around (731, 302), which reaches the letters from y 492, so the crop stops at y 472, in the empty band.
 const projects = [
   {
     slug: 'rugtraak', name: 'RUGTRAAK', radius: 95,
@@ -16,6 +19,10 @@ const projects = [
   {
     slug: 'sqkeys', name: 'SQ Keys', radius: 85,
     logo: { src: new URL('./assets/logos/SwissQuote.png', import.meta.url).href, cx: 236, cy: 237, r: 199, blend: 'source-over' },
+  },
+  {
+    slug: 'admp', name: 'ADMP', radius: 90,
+    logo: { src: new URL('./assets/logos/admp.jpeg', import.meta.url).href, cx: 731, cy: 302, r: 259, cutBelow: 472, blend: 'source-over' },
   },
 ];
 
@@ -53,6 +60,22 @@ const LABEL_FONT = '500 12px "JetBrains Mono", ui-monospace, monospace';
 const LABEL_SPACING = 0.12; // em
 const LABEL_COLOR = '#F0E6CC';
 const LABEL_GAP = 18; // px between the bubble and the middle of its label
+// Frame: the rounded rectangle the walls enclose, invisible but for a segment of light travelling around it and the sides
+// the bubbles hit, which light up for a moment around the contact point.
+const FRAME_RADIUS = 14; // px
+const FRAME_COLOR = '#C9A96A';
+const FRAME_WIDTH = 1.5; // px, stroke of the segment and the impacts
+const SEGMENT_FRACTION = 0.16; // share of the perimeter the travelling segment covers
+const SEGMENT_SPEED = 14; // s per lap
+const SEGMENT_ALPHA = 0.35;
+const IMPACT_MAX = 6; // impacts shown at once; a new one replaces the oldest
+const IMPACT_LIFE_MS = 700;
+const IMPACT_LENGTH = 140; // px, lit length of the side for the strongest impact
+const IMPACT_ALPHA = 0.8;
+const IMPACT_RING = 6; // px, radius the ring at the contact point grows to
+const IMPACT_MIN_SPEED = 0.4; // px per step toward the wall; below it a touch is resting contact and shows nothing
+const IMPACT_FULL_SPEED = 6; // px per step toward the wall for a full-strength impact
+const IMPACT_MIN_STRENGTH = 0.2; // the faintest impact that does show
 
 const stage = document.getElementById('bubble-stage');
 const canvas = document.getElementById('bubble-canvas');
@@ -230,6 +253,9 @@ function openProject({ slug, name, radius }, x, y) {
   window.setTimeout(() => burst(x, y), 260);
   window.setTimeout(() => {
     opening = false;
+    // The warp into the project starts from where the bubble was, in viewport coordinates.
+    const box = stage.getBoundingClientRect();
+    window.dispatchEvent(new CustomEvent('tunnel:origin', { detail: { x: box.left + x, y: box.top + y } }));
     window.location.hash = `projets/${slug}`;
     pop.remove();
   }, 580);
@@ -279,21 +305,132 @@ function startPhysics() {
   let walls = [];
   let bubbles = [];
 
+  // Each wall is labelled with the side of the stage it closes, which the impacts light up.
   function buildWalls(width, height) {
     const options = { isStatic: true, render: { visible: false } };
     Composite.remove(engine.world, walls);
     walls = [
-      Bodies.rectangle(width / 2, -WALL / 2, width + WALL * 2, WALL, options),
-      Bodies.rectangle(width / 2, height + WALL / 2, width + WALL * 2, WALL, options),
-      Bodies.rectangle(-WALL / 2, height / 2, WALL, height + WALL * 2, options),
-      Bodies.rectangle(width + WALL / 2, height / 2, WALL, height + WALL * 2, options),
+      Bodies.rectangle(width / 2, -WALL / 2, width + WALL * 2, WALL, { ...options, label: 'top' }),
+      Bodies.rectangle(width / 2, height + WALL / 2, width + WALL * 2, WALL, { ...options, label: 'bottom' }),
+      Bodies.rectangle(-WALL / 2, height / 2, WALL, height + WALL * 2, { ...options, label: 'left' }),
+      Bodies.rectangle(width + WALL / 2, height / 2, WALL, height + WALL * 2, { ...options, label: 'right' }),
     ];
+    walls.forEach((wall) => { wall.plugin.side = wall.label; });
     Composite.add(engine.world, walls);
   }
 
-  function spawnBubbles(width, height) {
-    Composite.remove(engine.world, bubbles);
-    bubbles = cells(width, height).map((cell, index) => {
+  // Frame geometry, rebuilt on show and resize only: the path the walls enclose, inset by half the stroke so it is never
+  // clipped, its perimeter for the dash, and each side as a straight line between its rounded corners.
+  const frame = { path: null, perimeter: 0, dash: [0, 0], sides: {} };
+
+  function buildFrame(width, height) {
+    const inset = FRAME_WIDTH / 2;
+    const left = inset;
+    const top = inset;
+    const right = width - inset;
+    const bottom = height - inset;
+    const r = Math.min(FRAME_RADIUS, (right - left) / 2, (bottom - top) / 2);
+    // Starts at the top left end of the top side, clockwise.
+    const path = new Path2D();
+    path.moveTo(left + r, top);
+    path.arcTo(right, top, right, bottom, r);
+    path.arcTo(right, bottom, left, bottom, r);
+    path.arcTo(left, bottom, left, top, r);
+    path.arcTo(left, top, right, top, r);
+    path.closePath();
+    frame.path = path;
+    frame.perimeter = 2 * (right - left - 2 * r) + 2 * (bottom - top - 2 * r) + 2 * Math.PI * r;
+    frame.dash[0] = frame.perimeter * SEGMENT_FRACTION;
+    frame.dash[1] = frame.perimeter - frame.dash[0];
+    // Per side: the fixed coordinate, and the range the lit segment may cover along it.
+    frame.sides = {
+      top: { horizontal: true, at: top, from: left + r, to: right - r },
+      bottom: { horizontal: true, at: bottom, from: left + r, to: right - r },
+      left: { horizontal: false, at: left, from: top + r, to: bottom - r },
+      right: { horizontal: false, at: right, from: top + r, to: bottom - r },
+    };
+  }
+
+  // Impacts in a fixed pool, the oldest overwritten: nothing is allocated per hit or per frame.
+  const impacts = Array.from({ length: IMPACT_MAX }, () => ({ active: false, side: 'top', along: 0, strength: 0, start: 0 }));
+  let nextImpact = 0;
+  let impactCount = 0; // read by the dev hook only
+
+  // Called before Matter resolves the contact, so the bubble's velocity is still the one it hit with.
+  function addImpact(wall, bubble) {
+    const { side } = wall.plugin;
+    const horizontal = side === 'top' || side === 'bottom';
+    const speed = horizontal ? bubble.velocity.y : bubble.velocity.x;
+    const toward = side === 'top' || side === 'left' ? -speed : speed;
+    if (!(toward >= IMPACT_MIN_SPEED)) return;
+    const impact = impacts[nextImpact];
+    nextImpact = (nextImpact + 1) % IMPACT_MAX;
+    impact.active = true;
+    impact.side = side;
+    impact.along = horizontal ? bubble.position.x : bubble.position.y;
+    impact.strength = clamp(toward / IMPACT_FULL_SPEED, IMPACT_MIN_STRENGTH, 1);
+    impact.start = performance.now();
+    impactCount += 1;
+  }
+
+  // The travelling light: one dash of the frame's length fraction, its offset moved along the perimeter with time.
+  function drawSegment(context, now) {
+    if (!frame.path) return;
+    context.save();
+    context.globalAlpha = SEGMENT_ALPHA;
+    context.strokeStyle = FRAME_COLOR;
+    context.lineWidth = FRAME_WIDTH;
+    context.lineCap = 'round';
+    context.setLineDash(frame.dash);
+    context.lineDashOffset = -((now / 1000 / SEGMENT_SPEED) % 1) * frame.perimeter;
+    context.stroke(frame.path);
+    context.restore();
+  }
+
+  // Each impact: the side lit around the contact point, growing out to its length while it fades, and a small ring.
+  function drawImpacts(context, now) {
+    context.save();
+    context.strokeStyle = FRAME_COLOR;
+    context.lineWidth = FRAME_WIDTH;
+    context.lineCap = 'round';
+    impacts.forEach((impact) => {
+      if (!impact.active) return;
+      const t = (now - impact.start) / IMPACT_LIFE_MS;
+      if (t >= 1) {
+        impact.active = false;
+        return;
+      }
+      const side = frame.sides[impact.side];
+      if (!side) return;
+      const grow = 1 - (1 - t) ** 3;
+      const half = (IMPACT_LENGTH * impact.strength * grow) / 2;
+      const along = clamp(impact.along, side.from, side.to);
+      const from = Math.max(side.from, along - half);
+      const to = Math.min(side.to, along + half);
+      context.globalAlpha = IMPACT_ALPHA * (1 - t);
+      context.beginPath();
+      if (side.horizontal) {
+        context.moveTo(from, side.at);
+        context.lineTo(to, side.at);
+      } else {
+        context.moveTo(side.at, from);
+        context.lineTo(side.at, to);
+      }
+      context.stroke();
+      context.beginPath();
+      if (side.horizontal) context.arc(along, side.at, IMPACT_RING * grow, 0, Math.PI * 2);
+      else context.arc(side.at, along, IMPACT_RING * grow, 0, Math.PI * 2);
+      context.stroke();
+    });
+    context.restore();
+  }
+
+  // All bubbles in their cells, or with onlyMissing just the ones a click removed, next to those still drifting.
+  function spawnBubbles(width, height, onlyMissing = false) {
+    const kept = onlyMissing ? bubbles : [];
+    if (!onlyMissing) Composite.remove(engine.world, bubbles);
+    const added = cells(width, height).map((cell, index) => {
+      if (kept.some((body) => body.plugin.data === projects[index])) return null;
       const { radius } = projects[index];
       const spreadX = Math.max(0, cell.width / 2 - radius - 12);
       const spreadY = Math.max(0, cell.height / 2 - radius - 12);
@@ -311,8 +448,9 @@ function startPhysics() {
       Body.setVelocity(body, { x: Math.cos(body.plugin.drift.angle) * speed, y: Math.sin(body.plugin.drift.angle) * speed });
       Body.setAngularVelocity(body, random(-ANGULAR_START, ANGULAR_START));
       return body;
-    });
-    Composite.add(engine.world, bubbles);
+    }).filter(Boolean);
+    bubbles = kept.concat(added);
+    Composite.add(engine.world, added);
   }
 
   function keepInside(width, height) {
@@ -360,21 +498,27 @@ function startPhysics() {
   });
 
   // At these speeds Matter treats a contact as resting, so the drift turns away from whatever was touched.
+  // A bubble meeting a wall also lights that side of the frame.
   Events.on(engine, 'collisionStart', ({ pairs }) => {
     pairs.forEach(({ bodyA, bodyB, collision }) => {
+      if (bodyA.plugin.side && bodyB.plugin.data) addImpact(bodyA, bodyB);
+      else if (bodyB.plugin.side && bodyA.plugin.data) addImpact(bodyB, bodyA);
       const away = Math.atan2(collision.normal.y, collision.normal.x);
       if (bodyA.plugin.drift) bodyA.plugin.drift.angle = away + random(-0.6, 0.6);
       if (bodyB.plugin.drift) bodyB.plugin.drift.angle = away + Math.PI + random(-0.6, 0.6);
     });
   });
 
-  // Sprites per project, rebuilt when the stage is shown or resized, at the device pixel ratio of that moment.
+  // Sprites per project, built once and kept while the stage is hidden; only a new device pixel ratio rebuilds them.
   let sprites = new Map();
   let spriteBuild = 0;
+  let spriteRatio = 0;
 
   async function buildSprites() {
-    const build = ++spriteBuild;
     const ratio = window.devicePixelRatio || 1;
+    if (ratio === spriteRatio) return;
+    spriteRatio = ratio;
+    const build = ++spriteBuild;
     const [images] = await Promise.all([
       Promise.all(logoImages),
       document.fonts.load(LABEL_FONT, projects.map(({ name }) => name.toUpperCase()).join('')).catch(() => {}),
@@ -423,12 +567,15 @@ function startPhysics() {
     return light.angle;
   }
 
-  // Per frame: body, logo turned by the body angle, the glint turned toward the light, then the label, which never turns.
+  // Per frame: the travelling light, then per bubble its body, logo turned by the body angle, the glint turned toward
+  // the light and the label, which never turns; the impacts last, so a bubble resting on the lit side never hides its ring.
   Events.on(render, 'afterRender', () => {
     const context = render.context;
     const ratio = render.options.pixelRatio;
+    const now = performance.now();
     context.save();
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    drawSegment(context, now);
     bubbles.forEach((body) => {
       const { slug, logo } = body.plugin.data;
       const set = sprites.get(slug);
@@ -455,6 +602,7 @@ function startPhysics() {
       const { label } = set;
       context.drawImage(label.canvas, x - label.width / 2, y + radius + LABEL_GAP - label.height / 2, label.width, label.height);
     });
+    drawImpacts(context, now);
     context.restore();
   });
 
@@ -499,20 +647,44 @@ function startPhysics() {
   }).observe(stage);
   document.addEventListener('visibilitychange', sync);
 
+  // Size the walls, the frame and the bubbles were last laid out for; the stage keeps them while it is hidden.
+  let laidWidth = 0;
+  let laidHeight = 0;
+
+  function layOut(width, height) {
+    Render.setSize(render, width, height);
+    buildWalls(width, height);
+    buildFrame(width, height);
+    spawnBubbles(width, height);
+    laidWidth = width;
+    laidHeight = height;
+  }
+
   watchStage({
+    // Shown again at the same size, the stage only brings back a bubble that was clicked away. A new size rebuilds
+    // walls and bodies, but never in the middle of a warp: that waits for it to end.
     onShow(width, height) {
-      Render.setSize(render, width, height);
-      buildWalls(width, height);
-      spawnBubbles(width, height);
-      buildSprites();
-      readStage();
+      const relayOut = () => {
+        if (width !== laidWidth || height !== laidHeight) layOut(width, height);
+        else if (bubbles.length < projects.length) spawnBubbles(width, height, true);
+        buildSprites();
+        readStage();
+      };
+      if (warpRunning() && laidWidth > 0 && (width !== laidWidth || height !== laidHeight)) {
+        window.addEventListener('warp:end', relayOut, { once: true });
+      } else {
+        relayOut();
+      }
       shown = true;
       sync();
     },
     onResize(width, height) {
       Render.setSize(render, width, height);
       buildWalls(width, height);
+      buildFrame(width, height);
       keepInside(width, height);
+      laidWidth = width;
+      laidHeight = height;
       buildSprites();
       readStage();
     },
@@ -521,6 +693,9 @@ function startPhysics() {
       sync();
     },
   });
+
+  // Dev server only (Vite drops this from the build): lets a test pin a bubble and count the impacts.
+  if (import.meta.env.DEV) window.__bubbleDebug = { Body, bubbles: () => bubbles, impacts: () => impactCount, pool: impacts };
 }
 
 // Reduced motion: no physics loop, the bubbles are plain buttons at the centre of their cells, with the same cropped logo.
